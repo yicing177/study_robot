@@ -1,0 +1,784 @@
+{
+	"Version": 3,
+	"Meta": {
+		"Duration": 1.97,
+		"Fps": 30.0,
+		"Loop": true,
+		"AreBeziersRestricted": false,
+		"CurveCount": 57,
+		"TotalSegmentCount": 80,
+		"TotalPointCount": 173,
+		"UserDataCount": 0,
+		"TotalUserDataSize": 0
+	},
+	"Curves": [
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_ANGLE_Z",
+			"Segments": [
+				0,
+				-0.04,
+				1,
+				0.156,
+				-0.04,
+				0.311,
+				16,
+				0.467,
+				16,
+				1,
+				0.633,
+				16,
+				0.8,
+				-0.04,
+				0.967,
+				-0.04,
+				0,
+				1.967,
+				-0.04
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_EYE_L_OPEN",
+			"Segments": [
+				0,
+				1,
+				1,
+				0.044,
+				0.998,
+				0.089,
+				0.755,
+				0.133,
+				0.407,
+				1,
+				0.156,
+				0.22,
+				0.178,
+				0.035,
+				0.2,
+				-0.181,
+				1,
+				0.233,
+				-0.454,
+				0.267,
+				-0.933,
+				0.3,
+				-1,
+				0,
+				0.567,
+				-1,
+				2,
+				0.6,
+				-0.942,
+				1,
+				0.667,
+				-0.09,
+				0.733,
+				1.01,
+				0.8,
+				1,
+				0,
+				1.967,
+				1
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_EYE_R_OPEN",
+			"Segments": [
+				0,
+				1,
+				1,
+				0.044,
+				0.998,
+				0.089,
+				0.755,
+				0.133,
+				0.407,
+				1,
+				0.156,
+				0.22,
+				0.178,
+				0.035,
+				0.2,
+				-0.181,
+				1,
+				0.233,
+				-0.454,
+				0.267,
+				-0.933,
+				0.3,
+				-1,
+				0,
+				0.567,
+				-1,
+				2,
+				0.6,
+				-0.942,
+				1,
+				0.667,
+				-0.09,
+				0.733,
+				1.01,
+				0.8,
+				1,
+				0,
+				1.967,
+				1
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_BROW_L_ANGLE",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_BROW_R_FORM",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_MOUTH_OPEN_Y",
+			"Segments": [
+				0,
+				0.7,
+				1,
+				0.111,
+				0.697,
+				0.222,
+				0.003,
+				0.333,
+				0,
+				1,
+				0.444,
+				0.003,
+				0.556,
+				0.697,
+				0.667,
+				0.7,
+				0,
+				1.967,
+				0.7
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_TERE",
+			"Segments": [
+				0,
+				0,
+				1,
+				0.2,
+				0,
+				0.4,
+				0.6,
+				0.6,
+				0.6,
+				0,
+				1.967,
+				0.6
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_BODY_Z",
+			"Segments": [
+				0,
+				0,
+				1,
+				0.2,
+				0,
+				0.4,
+				0.5,
+				0.6,
+				0.5,
+				1,
+				0.789,
+				0.5,
+				0.978,
+				0,
+				1.167,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_ARM_02_L_01",
+			"Segments": [
+				0,
+				0,
+				1,
+				0.111,
+				0,
+				0.222,
+				-0.4,
+				0.333,
+				-0.4,
+				1,
+				0.5,
+				-0.4,
+				0.667,
+				0,
+				0.833,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_ARM_02_L_02",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_HAND_02_L",
+			"Segments": [
+				0,
+				0,
+				0,
+				0.7,
+				0,
+				1,
+				0.833,
+				0,
+				0.967,
+				0,
+				1.1,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_ARM_02_R_01",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_ARM_02_R_02",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_HAND_02_R",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_KAMIYURE_FRONT",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_KAMIYURE_BACK",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Id": "PARAM_KAMIYURE_TWIN_R",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.967,
+				0
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "__RootPart__",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_SKETCH",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_BACKGROUND_03_PLUS",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_BACKGROUND_03",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_BACKGROUND_02",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_BACKGROUND",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_KIRAKIRA",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_ASE",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_IRAIRA",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_BODY",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_NECK",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_PAJAMA",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_UNIFORM",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_ARM_PAJAMA_R_02",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_ARM_PAJAMA_L_02",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_ARM_PAJAMA_R_01",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_ARM_PAJAMA_L_01",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_ARM_R_02",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.97,
+				0
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_ARM_L_02",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_ARM_R_01",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_ARM_L_01",
+			"Segments": [
+				0,
+				0,
+				0,
+				1.97,
+				0
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_HAIR_BACK_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_HAIR_TWIN_R",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_HAIR_TWIN_L",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_HAIR_BACK_002",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_HAIR_SIDE_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_HAIR_FRONT_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_EAR_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_NOSE_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_MOUTH_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_BROW_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_EYE_BALL_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_EYE_BALL_002",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_EYE_BALL_003",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_EYE_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_FACE_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_HOHO_01",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_01_FACESHADOW_001",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "PARTS_CORE",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		},
+		{
+			"Target": "PartOpacity",
+			"Id": "ROUGH",
+			"Segments": [
+				0,
+				1,
+				0,
+				1.97,
+				1
+			]
+		}
+	]
+}
