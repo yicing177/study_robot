@@ -12,14 +12,6 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none; /* 讓 canvas 不影響點擊 */
-}
 
 a {
   font-weight: 500;
@@ -67,11 +59,30 @@ button:focus-visible {
   padding: 2em;
 }
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  text-align: center;
+.app {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 100%; /* 設定大小，避免覆蓋整個畫面 */
+  height: 100%;
+  background-color: transparent;
+  z-index: 0; /* 設置較低的 z-index，讓按鈕在上面 */
+  pointer-events: none; /* 讓點擊事件不影響 Live2D */
 }
+nav {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10; /* 設定比機器人高 */
+}
+canvas {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
 
 @media (prefers-color-scheme: light) {
   :root {
