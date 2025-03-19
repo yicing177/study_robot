@@ -1,11 +1,17 @@
 import { createRouter, createWebHistory } from "vue-router";
-import Home from "../views/home.vue";
-import Login from "../views/login.vue";
+import home from "../views/home.vue";
+import login from "../views/login.vue";
+import calendar from "../views/calendar.vue";
+import myBook from "../views/myBook.vue";
+import summary from "../views/summary.vue";
 import Robot from "@/components/robot.vue";
 
 const routes = [
-  { path: "/", component: Home }, // 首頁
-  { path: "/login", component: Login }, // 登入
+  { path: "/", component: home }, // 首頁
+  { path: "/login", component: login }, // 登入
+  { path: "/calendar", component: calendar }, // 行事曆
+  { path: "/myBook", component: myBook },
+  { path: "/summary", component: summary },
 ];
 
 const router = createRouter({
