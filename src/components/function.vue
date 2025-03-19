@@ -2,7 +2,9 @@
   <button
     @mouseover="showSidebar"
     @mouseleave="hideSidebar"
-    class="function_btn">
+    @click="toggleSidebar"
+    class="function_btn"
+  >
     <img src="../assets/logo/function.svg" width="80" height="80" />
   </button>
   <div v-show="isSidebarVisible" class="sidebar">
@@ -18,15 +20,8 @@
 import { ref } from "vue";
 // 用來控制功能列顯示/隱藏的狀態
 const isSidebarVisible = ref(false);
-
-// 顯示功能列
-const showSidebar = () => {
-  isSidebarVisible.value = true;
-};
-
-// 隱藏功能列
-const hideSidebar = () => {
-  isSidebarVisible.value = false;
+const toggleSidebar = () => {
+  isSidebarVisible.value = !isSidebarVisible.value;
 };
 </script>
 
