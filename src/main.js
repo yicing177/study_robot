@@ -6,3 +6,5 @@ import router from './router';
 const app = createApp(App);
 app.use(router); // 啟用 Vue Router
 app.mount('#app');
+
+
