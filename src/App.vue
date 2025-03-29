@@ -1,6 +1,6 @@
 <script setup>
 import { useRoute } from "vue-router";
-const route = useRoute(); 
+const route = useRoute();
 import Function from "./components/function.vue";
 import Music from "./components/music.vue";
 </script>
@@ -8,11 +8,9 @@ import Music from "./components/music.vue";
 <template>
   <div class="button">
     <Function v-if="route.path !== '/login'" />
-    <Music v-if="route.path !== '/login'" />
-    <router-view />
+    <Music v-if="route.path !== '/login' && route.path !== '/quiz'" />
   </div>
+  <router-view />
 </template>
 
-<style scoped>
-
-</style>
+<style scoped></style>

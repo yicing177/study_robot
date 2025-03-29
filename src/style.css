@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
   height: 100%; /* 设置根元素的高度 */
   margin: 0; /* 去除默认边距 */
 }
@@ -13,17 +14,16 @@ html, body {
   padding: 0;
 }
 
-.function_btn {
-  left: 40px;
-}
-
-.music_btn {
-  right: 40px;
+.function_btn img,
+.music_btn img {
+  width: 80px !important;
+  height: 80px !important;
+  object-fit: contain; /* 確保圖片不會被拉伸 */
 }
 
 .sidebar,
 .List {
-  background-color: #efbacd;
+  background-color: #c9b8ac;
   position: fixed; /* 讓功能列浮動 */
   z-index: 10; /* 保證功能列在前 */
   top: 140px;
@@ -32,35 +32,15 @@ html, body {
   align-items: center;
 }
 
-.robot {
-  background-color: rgb(92, 132, 167);
-  z-index: 1; /* 確保機器人顯示在功能列之上 */
-}
 
+/*
 nav {
   position: absolute;
   top: 20px;
   left: 20px;
   z-index: 10;
 }
-canvas {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-/*
-.app {
-  position: fixed;
-  bottom: 0;
-  right: 0;
-  width: 100%;
-  height: 100%;
-  background-color: transparent;
-  z-index: -1;
-  pointer-events: none;
-}
+
 
 
 :root {

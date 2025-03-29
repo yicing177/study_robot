@@ -84,7 +84,15 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="app">
-    <canvas ref="liveCanvas"></canvas>
+  <div class="robot">
+    <canvas ref="liveCanvas" width="100%"></canvas>
   </div>
 </template>
+
+<style>
+canvas {
+  width: 100%; /* 让 canvas 填满 robot */
+  height: auto;
+  display: block;
+}
+</style>
