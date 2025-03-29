@@ -1,5 +1,6 @@
 import axios from "axios";
 
+//跟後端串起來(API地址)
 const API_BASE_URL = "http://127.0.0.1:5000/api";
 
 export const testApi = async () => {
