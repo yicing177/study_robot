@@ -7,8 +7,8 @@ import Music from "./components/music.vue";
 
 <template>
   <div class="button">
-    <Function v-if="route.path !== '/login'" />
-    <Music v-if="route.path !== '/login' && route.path !== '/quiz'" />
+    <Function v-if="route.path !== '/login' && route.path !== '/register'"/>
+    <Music v-if="route.path !== '/login' && route.path !== '/quiz' && route.path !== '/register'" />
   </div>
   <router-view />
 </template>
