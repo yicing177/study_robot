@@ -1,20 +1,11 @@
 <template>
-  <div>
-    <h2>Login</h2>
-    <form @submit.prevent="handleLogin">
-      <input v-model="email" type="email" placeholder="Enter email" required />
-      <input v-model="password" type="password" placeholder="Enter password" required />
-      <button type="submit">Login</button>
-    </form>
-    <p>還沒有帳號請先註冊</p>
-    <button @click="goToRegister">Create</button>
-  </div>
   <div class="login_container">
-    <div class="login_box">
+    <form class="login_box" @submit.prevent="handleLogin">
       <h1 class="title">LOGIN</h1>
       <div class="email_box">
         <input
-          type="text"
+          v-model="email"
+          type="email"
           name="email"
           placeholder="EMAIL"
           id="email"
@@ -23,6 +14,7 @@
       </div>
       <div class="pwd_box">
         <input
+          v-model="password"
           type="password"
           name="password"
           placeholder="PASSWORD"
@@ -33,14 +25,15 @@
       <div>
         <button class="btn_forget_pwd">Forget password</button>
       </div>
-      <div>
-        <button class="btn_login" @click="navigateTo('/')">Login in</button>
+      <div class="button">
+        <button class="btn_singUp" @click="goToRegister">Sign Up</button>
+        <button class="btn_login" type="submit">Login in</button>
       </div>
-    </div>
+    </form>
   </div>
 </template>
 
-<script setup>
+<script>
 //邱
 import { auth, db } from "@/firebase/firebase"; // 引入 Firebase 認證與 Firestore
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -57,9 +50,13 @@ export default {
     async handleLogin() {
       try {
         // 使用 Firebase Auth 進行登入
-        const userCredential = await signInWithEmailAndPassword(auth, this.email, this.password);
+        const userCredential = await signInWithEmailAndPassword(
+          auth,
+          this.email,
+          this.password
+        );
         console.log("登入成功:", userCredential.user);
-    
+
         // 存入 localStorage
         localStorage.setItem("token", userCredential.user.accessToken);
         localStorage.setItem("uid", userCredential.user.uid);
@@ -84,7 +81,9 @@ export default {
     },
   },
 };
+</script>
 
+<script setup>
 //呂
 import { useRouter, useRoute } from "vue-router";
 const router = useRouter();
@@ -101,7 +100,7 @@ const navigateTo = (path) => {
   min-height: 100vh;
   width: 100vw;
 }
-.login_box{
+.login_box {
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -111,7 +110,7 @@ const navigateTo = (path) => {
   gap: 25px;
   width: 30%;
 }
-.title{
+.title {
   margin: 0;
 }
 .email_box,
@@ -121,22 +120,29 @@ const navigateTo = (path) => {
   justify-content: center; /* 讓內部的 input 水平置中 */
 }
 #email,
-#password{
+#password {
   padding: 10px 20px;
   border-radius: 20px;
   border: 0;
   width: 90%;
   background-color: #e8e1dc;
 }
-.btn_forget_pwd{
+.btn_forget_pwd {
   border: 0;
   background-color: transparent;
 }
-.btn_login{
+.button {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 10%;
+  width: 90%;
+}
+.btn_login,
+.btn_singUp {
   border: 0;
   border-radius: 20px;
   padding: 10px 20px;
   background-color: #e8e1dc;
-
 }
 </style>
