@@ -29,7 +29,7 @@ onMounted(async () => {
   });
 
   // 載入 Live2D 模型
-  model = await Live2DModel.from("../public/shizuku/shizuku.model3.json");
+  model = await Live2DModel.from("../public/shizuku/shizuku_t02.model3.json");
   app.stage.addChild(model);
 
   // 設定 Live2D 模型
@@ -43,8 +43,8 @@ onMounted(async () => {
   });
 
   // 設定動畫
-  const motion05 = "yyx05.motion3.json";
-  const motion06 = "yyx06.motion3.json";
+  const motion05 = "05.motion3.json";
+  const motion06 = "06.motion3.json";
   let playCount = 0;
 
   // 播放指定的動畫
@@ -91,7 +91,7 @@ onMounted(async () => {
 
 <style>
 canvas {
-  width: 100%; /* 让 canvas 填满 robot */
+  width: 100%; 
   height: auto;
   display: block;
 }

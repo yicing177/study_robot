@@ -99,6 +99,7 @@ onUnmounted(() => {
 }
 .function_btn {
   left: 40px;
+  top: 40px;
 }
 .quiz,
 .calendar,

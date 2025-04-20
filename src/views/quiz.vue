@@ -3,13 +3,16 @@
     <div class="robot_container">
       <Robot />
     </div>
-    <chat_right />
+    <div class="chat_right_container">
+      <chat_right />
+    </div>
   </div>
 </template>
 
 <script setup>
 import Robot from "@/components/Robot.vue";
 import chat_right from "@/components/chat_right.vue";
+
 </script>
 
 <style scoped>
@@ -20,14 +23,15 @@ import chat_right from "@/components/chat_right.vue";
   align-items: flex-end;
 }
 .robot_container {
-  flex: 65%;
+  flex: 60%;
   display: flex;
   justify-content: center;
+  align-items: flex-end;
   align-items: center;
   height: 100vh;
 }
 .chat_right_container {
-  flex: 35%;
+  flex: 40%;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -43,8 +47,8 @@ import chat_right from "@/components/chat_right.vue";
   align-items: flex-end;
 }
 ::v-deep(canvas) {
-  width: 120%;
-  height: auto;
-  transform-origin: center;
+  transform-origin: bottom center;
+  transform: scale(1.5);
+  
 }
 </style>

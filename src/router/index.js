@@ -4,8 +4,8 @@ import register from "../views/register.vue";
 import login from "../views/login.vue";
 import calendar from "../views/calendar.vue";
 import myBook from "../views/myBook.vue";
-import summary from "../views/summary.vue";
 import quiz from "../views/quiz.vue";
+import file from "../views/file.vue";
 import Robot from "@/components/robot.vue";
 import chat_bottom from "@/components/chat_bottom.vue";
 
@@ -15,8 +15,8 @@ const routes = [
   { path: "/login", component: login }, // 登入
   { path: "/calendar", component: calendar }, // 行事曆
   { path: "/myBook", component: myBook },
-  { path: "/summary", component: summary },
-  { path: "/quiz", component: quiz}
+  { path: "/quiz", component: quiz },
+  { path: "/file", component: file },
 ];
 
 const router = createRouter({

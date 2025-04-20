@@ -1,21 +1,23 @@
 <template>
-  <div class="chat_right_container">
-    <div class="background">
-      <div class="chat_box">
-        <div class="upload_btn">
-          <img src="../assets/logo/upload.svg" width="40" height="40" />
-        </div>
-        <input placeholder="輸入您的問題..." id="box" />
-        <div class="voice_btn">
-          <img src="../assets/logo/voice.svg" width="40" height="40" />
-        </div>
-        <div class="send_btn">
-          <img src="../assets/logo/send.svg" width="40" height="40" />
-        </div>
+  <div class="background">
+    <div class="chat_box">
+      <div class="upload_btn">
+        <Upload />
+      </div>
+      <input placeholder="想生成什麼測驗呢？" id="box" />
+      <div class="voice_btn">
+        <img src="../assets/logo/voice.svg" width="40" height="40" />
+      </div>
+      <div class="send_btn">
+        <img src="../assets/logo/send.svg" width="40" height="40" />
       </div>
     </div>
   </div>
 </template>
+
+<script setup>
+import Upload from "@/components/upload.vue";
+</script>
 
 <style scoped>
 #box {
