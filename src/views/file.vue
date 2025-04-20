@@ -6,7 +6,7 @@
       </div>
 
       <div v-else-if="fileType === 'application/pdf'" class="pdf_container">
-        <iframe :src="fileURL" class="pdf" />
+        <iframe :src="fileURL" class="pdf"></iframe>
       </div>
 
       <div v-else>
@@ -35,11 +35,11 @@ const fileType = route.query.type;
 .image {
   width: 60%;
 }
-.pdf{
+.pdf {
   height: 100%;
   width: 60%;
 }
-.pdf_container{
+.pdf_container {
   display: flex;
   flex-direction: column;
   justify-content: center;
