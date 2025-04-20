@@ -1,12 +1,12 @@
 html,
 body {
-  height: 100%; /* 设置根元素的高度 */
-  margin: 0; /* 去除默认边距 */
+  height: 100%; 
+  margin: 0; 
 }
 .function_btn,
-.music_btn {
+.music_btn,
+.return_btn {
   position: fixed; /* 固定在畫面上 */
-  top: 40px;
   z-index: 100; /* 確保按鈕在最上層 */
   background-color: transparent;
   border: none;
@@ -15,7 +15,8 @@ body {
 }
 
 .function_btn img,
-.music_btn img {
+.music_btn img,
+.return_btn feImage {
   width: 80px !important;
   height: 80px !important;
   object-fit: contain; /* 確保圖片不會被拉伸 */

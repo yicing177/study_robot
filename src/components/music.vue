@@ -35,12 +35,30 @@ const toggleMusicList = () => {
 
 // 音樂清單
 const musicList = ref([
-  { name: "鋼琴伴奏", src: new URL("../assets/audio/鋼琴伴奏.mp3", import.meta.url).href },
-  { name: "細雨綿綿", src: new URL("../assets/audio/細雨綿綿.mp3", import.meta.url).href },
-  { name: "輕快輕鬆", src: new URL("../assets/audio/輕快輕鬆.mp3", import.meta.url).href },
-  { name: "爵士抒情", src: new URL("../assets/audio/爵士抒情.mp3", import.meta.url).href },
-  { name: "海浪輕擊", src: new URL("../assets/audio/海浪輕擊.mp3", import.meta.url).href },
-  { name: "鳥兒啾鳴", src: new URL("../assets/audio/鳥兒啾鳴.mp3", import.meta.url).href },
+  {
+    name: "鋼琴伴奏",
+    src: new URL("../assets/audio/鋼琴伴奏.mp3", import.meta.url).href,
+  },
+  {
+    name: "細雨綿綿",
+    src: new URL("../assets/audio/細雨綿綿.mp3", import.meta.url).href,
+  },
+  {
+    name: "輕快輕鬆",
+    src: new URL("../assets/audio/輕快輕鬆.mp3", import.meta.url).href,
+  },
+  {
+    name: "爵士抒情",
+    src: new URL("../assets/audio/爵士抒情.mp3", import.meta.url).href,
+  },
+  {
+    name: "海浪輕擊",
+    src: new URL("../assets/audio/海浪輕擊.mp3", import.meta.url).href,
+  },
+  {
+    name: "鳥兒啾鳴",
+    src: new URL("../assets/audio/鳥兒啾鳴.mp3", import.meta.url).href,
+  },
 ]);
 
 // 音樂元素的 ref 陣列
@@ -59,8 +77,10 @@ const clickAudio = (index) => {
 const handleClickOutside = (event) => {
   if (
     isListVisible.value && // 確保音樂列表是開啟的
-    listRef.value && !listRef.value.contains(event.target) && // 點擊不在列表內
-    buttonRef.value && !buttonRef.value.contains(event.target) // 點擊不在按鈕上
+    listRef.value &&
+    !listRef.value.contains(event.target) && // 點擊不在列表內
+    buttonRef.value &&
+    !buttonRef.value.contains(event.target) // 點擊不在按鈕上
   ) {
     isListVisible.value = false;
   }
@@ -102,5 +122,6 @@ onUnmounted(() => {
 
 .music_btn {
   right: 40px;
+  top: 40px;
 }
 </style>

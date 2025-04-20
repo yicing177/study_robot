@@ -4,12 +4,12 @@
     <Robot />
     <div class="chatting">
       <div class="default">
-        <button class="d1">明天要考試了好焦慮...</button>
-        <button class="d2">可以陪我聊聊嗎？</button>
-        <button class="d3">今天要複習什麼呢？</button>
-        <button class="d4">推薦今天適合的讀書音樂！</button>
+        <button class="d1" @click="setInputText ('明天要考試了好焦慮...')">明天要考試了好焦慮...</button>
+        <button class="d2" @click="setInputText ('可以陪我聊聊嗎？')">可以陪我聊聊嗎？</button>
+        <button class="d3" @click="setInputText ('今天要複習什麼呢？')">今天要複習什麼呢？</button>
+        <button class="d4" @click="setInputText ('推薦今天適合的讀書音樂！')">推薦今天適合的讀書音樂！</button>
       </div>
-      <chat_bottom />
+      <chat_bottom :messages="messages" @updateMessages="addMessage" />
     </div>
   </div>
 </template>
@@ -25,6 +25,17 @@ const backgroundStyle = ref({
   backgroundImage: `url(${roomImage})`, // 使用導入的圖片路徑
   backgroundPosition: "center", // 置中
 });
+
+const messages = ref([]);
+
+const setInputText = (message) => {
+  document.getElementById('box').value = message;
+};
+
+const addMessage = (message) => {
+  messages.value.push(message); 
+};
+
 </script>
 
 <style scoped>

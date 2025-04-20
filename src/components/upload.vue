@@ -1,44 +1,30 @@
 <template>
-  <div class="chat_container">
-    <div class="chat_box">
-      <div class="upload_btn">
-        <Upload />
+  <!-- 上傳進度條 -->
+  <div v-if="uploading || uploadCompleted" class="file_progessing">
+    <div v-if="uploading" class="upload_progress">
+      <div class="progress_bar">
+        <div class="progress_fill" :style="{ width: progress + '%' }"></div>
       </div>
-      <input v-model="inputText" placeholder="輸入您的問題..." id="box" />
-      <div class="voice_btn">
-        <img src="../assets/logo/voice.svg" width="40" height="40" />
-      </div>
-      <button class="send_btn" @click="sendMessage">
-        <img src="../assets/logo/send.svg" width="40" height="40" />
-      </button>
+      <p>{{ progress }}%</p>
     </div>
+    <div v-if="uploadCompleted" class="upload_result">
+      <p class="hint">上傳完成！</p>
+      <button @click="viewFile">查看</button>
+      <button @click="confirmUpload">確認</button>
+    </div>
+  </div>
+  <div class="upload_btn">
+    <input type="file" id="upload" @change="handleFileUpload" />
+    <!--label的for對應到input type=file的id，就可以設定不同的css-->
+    <label type="button" for="upload" class="upload_btn_style">
+      <img src="../assets/logo/upload.svg" width="40" height="40" />
+    </label>
   </div>
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from "vue";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
-import Upload from "@/components/upload.vue";
-
-const props = defineProps({
-  messages: {
-    type: Array,
-    default: () => [],
-  },
-});
-
-const emit = defineEmits(["updateMessages"]);
-
-const inputText = ref("");
-
-const sendMessage = () => {
-  console.log("Button clicked!");
-  console.log("Input text:", inputText.value);
-  if (inputText.value.trim()) {
-    emit("updateMessages", inputText.value); // 向父组件发送消息
-    inputText.value = ""; // 清空输入框
-  }
-};
 
 const uploading = ref(false); // 控制是否顯示上傳進度
 const uploadCompleted = ref(false); // 控制是否顯示完成按鈕
@@ -165,37 +151,5 @@ const confirmUpload = () => {
 /* 隱藏預設上傳檔案的醜醜按鈕 */
 input[type="file"] {
   display: none;
-}
-
-#box {
-  width: 90%;
-  border-radius: 10px;
-  border: 0px;
-  padding: 10px;
-}
-.chat_container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.chat_box {
-  position: absolute;
-  width: 90%;
-  bottom: 25px;
-  border-radius: 10px; /* 圓角 */
-  background-color: #c9b8ac; /* 背景色 */
-  padding: 15px 20px; /* 依序為上下、左右 */
-  overflow-y: auto; /* 內容超出時可以滾動 */
-  display: flex;
-  flex-direction: row;
-  gap: 10px;
-}
-.voice_btn,
-.upload_btn,
-.send_btn {
-  display: flex;
-  justify-content: center;
-  border: 0;
-  background-color: transparent;
 }
 </style>
