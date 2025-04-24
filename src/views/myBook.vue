@@ -49,22 +49,37 @@ const summaries = ref([]); // 暫時為空，未來串後端放這邊
 // 書架每層最多顯示的書本數
 const booksPerRow = 5;
 
-// 固定顯示三層，空位補上 placeholder
 const bookRows = computed(() => {
   const rows = [];
-  const source =
-    currentShelf.value === "myBook" ? uploadedFiles.value : summaries.value;
+  const source = currentShelf.value === "myBook" ? uploadedFiles.value : summaries.value;
 
-  for (let i = 0; i < 3; i++) {
+  const totalRows = Math.ceil(source.length / booksPerRow);
+  for (let i = 0; i < totalRows; i++) {
     const start = i * booksPerRow;
     const row = source.slice(start, start + booksPerRow);
-    while (row.length < booksPerRow) {
-      row.push({ name: "", isPlaceholder: true });
-    }
+    while (row.length < booksPerRow) row.push({ name: "", isPlaceholder: true });
     rows.push(row);
   }
   return rows;
 });
+
+
+// 固定顯示三層，空位補上 placeholder
+//const bookRows = computed(() => {
+  //const rows = [];
+  //const source =
+    //currentShelf.value === "myBook" ? uploadedFiles.value : summaries.value;
+
+  //for (let i = 0; i < 3; i++) {
+    //const start = i * booksPerRow;
+    //const row = source.slice(start, start + booksPerRow);
+    //while (row.length < booksPerRow) {
+      //row.push({ name: "", isPlaceholder: true });
+    //}
+    //rows.push(row);
+  //}
+  //return rows;
+//});
 
 onMounted(() => {
   const saved = JSON.parse(localStorage.getItem("uploadedFiles"));

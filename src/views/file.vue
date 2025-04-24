@@ -1,7 +1,7 @@
 <template>
   <div class="file_container">
     <div class="file">
-      <div v-if="fileType.startsWith('image')" class="image_container">
+      <div v-if="fileType && fileType.startsWith('image')" class="image_container">
         <img :src="fileURL" alt="Uploaded Image" class="image" />
       </div>
 
@@ -21,8 +21,12 @@
 import { useRoute } from "vue-router";
 const route = useRoute();
 
-const fileURL = route.query.file;
-const fileType = route.query.type;
+const fileURL = route.query.file || "";
+const fileType = route.query.type || "";
+
+console.log("fileType:", fileType)
+console.log("fileURL:", fileURL);
+
 </script>
 
 <style scoped>
