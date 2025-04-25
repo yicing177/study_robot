@@ -9,8 +9,8 @@ import Return from "@/components/return.vue";
 <template>
   <div class="button">
     <Function v-if="route.path !== '/login' && route.path !== '/register'"/>
-    <Return v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/'"/>
-    <Music v-if="route.path !== '/login' && route.path !== '/quiz' && route.path !== '/register' && route.path !== '/myBook'" />
+    <Return v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/' && route.path !== '/file' "/>
+    <Music v-if="route.path !== '/login' && route.path !== '/quiz' && route.path !== '/register' && route.path !== '/myBook' && route.path !== '/calendar'" />
   </div>
   <router-view />
 </template>

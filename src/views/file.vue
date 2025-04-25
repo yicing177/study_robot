@@ -14,11 +14,16 @@
         <a :href="fileURL" download>下載檔案</a>
       </div>
     </div>
+    <div class="chat_bottom">
+      <chat_bottom />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { useRoute } from "vue-router";
+import chat_bottom from "../components/chat_bottom.vue";
+
 const route = useRoute();
 
 const fileURL = route.query.file || "";
@@ -41,26 +46,32 @@ console.log("fileURL:", fileURL);
 }
 .pdf {
   height: 100%;
-  width: 60%;
+  width: 90%;
 }
 .pdf_container {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 60%;
+  height: 90%;
   width: 100%;
+  
 }
 .file_container {
   height: 100vh;
   width: 100vw;
+  display: flex;
+  justify-content: center;
 }
 .file {
-  height: 100%;
-  width: 100%;
+  height: 70%;
+  width: 70%;
+  position: absolute;
+  top: 8%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  background-color: #dfd5ce;
 }
 </style>
