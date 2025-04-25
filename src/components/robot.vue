@@ -74,13 +74,12 @@ onMounted(async () => {
   }
 
   startMotionLoop();
-
-  onBeforeUnmount(() => {
+});
+onBeforeUnmount(() => {
     stopMotionLoop();
     model?.destroy();
     app?.destroy();
   });
-});
 </script>
 
 <template>
