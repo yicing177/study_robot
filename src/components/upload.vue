@@ -10,7 +10,7 @@
     <div v-if="uploadCompleted" class="upload_result">
       <p class="hint">上傳完成！</p>
       <button @click="viewFile">查看</button>
-      <button @click="confirmUpload">確認</button>
+      <button @click="viewFile">確認</button>
     </div>
   </div>
   <div class="upload_btn">
@@ -86,14 +86,14 @@ const viewFile = () => {
     });
     localStorage.setItem("uploadedFiles", JSON.stringify(savedFiles));
 
-    router.push({
-      path: "/file",
-      query: { 
-        file: url,         //  Firebase Storage 的 URL
-        type: type,        // 檔案類型，例如 "application/pdf"
-        title: title       //  顯示的名稱 },
-      }     
-    });
+    // router.push({
+    //   path: "/file",
+    //   query: { 
+    //     file: url,         //  Firebase Storage 的 URL
+    //     type: type,        // 檔案類型，例如 "application/pdf"
+    //     title: title       //  顯示的名稱 },
+    //   }     
+    // });
 };
 const confirmUpload = () => {
   if(!uploadedMaterial.value) return;
@@ -101,6 +101,8 @@ const confirmUpload = () => {
     // 先取出舊資料
     const existing = JSON.parse(localStorage.getItem("uploadedFiles") || "[]");
 
+    // 存回 localStorage
+    localStorage.setItem("uploadedFiles", JSON.stringify(existing));
     // 加入 Firebase 上傳成功的教材資訊
   existing.push({
     name: name || title,  // 可根據實際欄位選擇
@@ -110,8 +112,7 @@ const confirmUpload = () => {
     user_id,
     upload_time,
   });
-    // 存回 localStorage
-    localStorage.setItem("uploadedFiles", JSON.stringify(existing));
+
   
   uploadCompleted.value = false;
   selectedFile.value = null;
