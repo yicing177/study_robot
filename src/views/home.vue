@@ -12,6 +12,12 @@
       <chat_bottom :messages="messages" @updateMessages="addMessage" />
     </div>
   </div>
+  <div class="gazer-demo">
+    <h2>眼神追蹤測試區</h2>
+    <p>請允許使用攝影機，系統會根據你是否注視螢幕進行反應</p>
+    <p>是否正在注視：{{ isLooking ? '是' : '否' }}</p>
+    <p>目前視線位置：X: {{ gazeX?.toFixed(2) }} | Y: {{ gazeY?.toFixed(2) }}</p>
+  </div>
 </template>
 
 <script setup>
@@ -36,7 +42,28 @@ const addMessage = (message) => {
   messages.value.push(message); 
 };
 
+import { useWebGazer } from '@/composables/useWebGazer'
+
+// 從 hook 裡取得 gaze 資料 & 狀態
+const {
+  isLooking,
+  gazeX,
+  gazeY
+} = useWebGazer(
+  (data, timestamp) => {
+    console.log("視線更新:", data.x.toFixed(2), data.y.toFixed(2))
+  },
+  () => {
+    console.log("看不到你了")
+    alert("你是不是低頭了？我先閉嘴一下")
+  },
+  () => {
+    console.log("抬頭啦")
+    alert("你回來啦～要我幫忙嗎？")
+  }
+)
 </script>
+
 
 <style scoped>
 .container {
@@ -108,5 +135,12 @@ const addMessage = (message) => {
   border-radius: 5px;
   padding: 8px 20px;
   box-shadow: 2px 2px 7px rgb(174, 174, 174);
+}
+</style>
+
+<style scoped>
+.gazer-demo {
+  padding: 2rem;
+  font-family: sans-serif;
 }
 </style>
