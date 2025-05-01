@@ -12,12 +12,6 @@
       <chat_bottom :messages="messages" @updateMessages="addMessage" />
     </div>
   </div>
-  <div class="gazer-demo">
-    <h2>眼神追蹤測試區</h2>
-    <p>請允許使用攝影機，系統會根據你是否注視螢幕進行反應</p>
-    <p>是否正在注視：{{ isLooking ? '是' : '否' }}</p>
-    <p>目前視線位置：X: {{ gazeX?.toFixed(2) }} | Y: {{ gazeY?.toFixed(2) }}</p>
-  </div>
 </template>
 
 <script setup>
