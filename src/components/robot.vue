@@ -74,12 +74,13 @@ onMounted(async () => {
   }
 
   startMotionLoop();
-});
-onBeforeUnmount(() => {
+  
+  onBeforeUnmount(() => {
     stopMotionLoop();
     model?.destroy();
     app?.destroy();
   });
+});
 </script>
 
 <template>
@@ -90,7 +91,7 @@ onBeforeUnmount(() => {
 
 <style>
 canvas {
-  width: 100%; 
+  width: 100%;
   height: auto;
   display: block;
 }
