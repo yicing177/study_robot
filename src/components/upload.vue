@@ -16,82 +16,106 @@
   <div class="upload_btn">
     <input type="file" id="upload" @change="handleFileUpload" />
     <!--label的for對應到input type=file的id，就可以設定不同的css-->
-    <label type="button" for="upload" class="upload_btn_style">
-      <img src="../assets/logo/upload.svg" width="40" height="40" />
+    <label for="upload" class="upload_btn_style">
+      <img :src="uploadIcon" width="40" height="40" />
     </label>
   </div>
 </template>
 
 <script setup>
+import uploadIcon from "../assets/logo/upload.svg";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import axios from "axios";
 
 const uploading = ref(false); // 控制是否顯示上傳進度
 const uploadCompleted = ref(false); // 控制是否顯示完成按鈕
 const progress = ref(0); // 模擬進度條
-
+const uploadedMaterial = ref(null);
 const selectedFile = ref(null);
+const router = useRouter();
 
-const handleFileUpload = (event) => {
+const handleFileUpload = async(event) => {
   const file = event.target.files[0];
   if (!file) return;
   selectedFile.value = file;
 
-  // 開始模擬上傳
+  //初始化進度與上傳狀態
   uploading.value = true;
-  uploadCompleted.value = false;
   progress.value = 0;
+  
+  // 建立 FormData 並傳給 Flask 後端  
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("user_id", "test-user"); // 可以根據登入帳號改(待處理)
+  formData.append("title", file.name);
+  
 
-  const interval = setInterval(() => {
-    if (progress.value >= 100) {
-      clearInterval(interval);
-      uploading.value = false;
-      uploadCompleted.value = true;
-    } else {
-      progress.value += 5; // 每次加5%
-    }
-  }, 50); // 每100ms 更新一次
+
+  try {
+    //真正發送請求」到 Flask 後端
+    const res = await axios.post("http://localhost:5000/upload_material", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      },
+      //實際根據檔案大小計算上傳進度
+      onUploadProgress: (e) => {
+        progress.value = Math.round((e.loaded * 100) / e.total);
+      },
+    });
+    //拿到後端回傳的 Firebase 儲存結果：URL、type、title
+    uploadedMaterial.value = res.data.material;
+    uploadCompleted.value = true;
+  } catch (err) {
+    console.error("上傳失敗", err);
+    alert("上傳失敗，請再試一次！");
+  } finally {
+    uploading.value = false;
+  }
 };
 
-const router = useRouter();
 
 const viewFile = () => {
-  if (selectedFile.value) {
-    const fileURL = URL.createObjectURL(selectedFile.value);
-
+  if (!uploadedMaterial.value) return;
+  const { file_url: url, title, type } = uploadedMaterial.value;
+  
     // 儲存教材到 localStorage
-    const savedFiles = JSON.parse(localStorage.getItem("uploadedFiles")) || [];
+    const savedFiles = JSON.parse(localStorage.getItem("uploadedFiles")|| "[]");
     savedFiles.push({
-      name: selectedFile.value.name,
-      type: selectedFile.value.type,
-      url: fileURL,
+      name: title, type, url
     });
     localStorage.setItem("uploadedFiles", JSON.stringify(savedFiles));
 
     router.push({
       path: "/file",
-      query: { file: fileURL, type: selectedFile.value.type },
+      query: { 
+        file: url,         //  Firebase Storage 的 URL
+        type: type,        // 檔案類型，例如 "application/pdf"
+        title: title       //  顯示的名稱 },
+      }     
     });
-  }
 };
 const confirmUpload = () => {
-  if (selectedFile.value) {
-    const fileURL = URL.createObjectURL(selectedFile.value);
+  if(!uploadedMaterial.value) return;
+  const { url, title, type, name, user_id, upload_time } = uploadedMaterial.value;
     // 先取出舊資料
-    const existing = JSON.parse(localStorage.getItem("uploadedFiles")) || [];
+    const existing = JSON.parse(localStorage.getItem("uploadedFiles") || "[]");
 
-    // 加入新書籍資料
-    existing.push({
-      name: selectedFile.value.name,
-      type: selectedFile.value.type,
-      url: fileURL,
-    });
-
+    // 加入 Firebase 上傳成功的教材資訊
+  existing.push({
+    name: name || title,  // 可根據實際欄位選擇
+    title,
+    type,
+    url,
+    user_id,
+    upload_time,
+  });
     // 存回 localStorage
     localStorage.setItem("uploadedFiles", JSON.stringify(existing));
-  }
+  
   uploadCompleted.value = false;
   selectedFile.value = null;
+  console.log("🚀 確認 Firebase 回傳的資料", uploadedMaterial.value);
 };
 </script>
 

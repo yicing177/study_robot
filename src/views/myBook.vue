@@ -66,6 +66,7 @@ const bookRows = computed(() => {
   return rows;
 });
 
+
 onMounted(() => {
   const saved = JSON.parse(localStorage.getItem("uploadedFiles"));
   if (Array.isArray(saved)) {
