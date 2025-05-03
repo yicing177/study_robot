@@ -95,6 +95,8 @@ const viewFile = (book) => {
         type: fileType,
       },
     });
+  } else{
+    console.error("不能獨文件 url")
   }
 };
 </script>
