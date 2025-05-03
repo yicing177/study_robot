@@ -15,7 +15,7 @@
   </div>
   <div class="upload_btn">
     <input type="file" id="upload" @change="handleFileUpload" />
-    <!--label的for對應到input type=file的id，就可以設定不同的css-->
+    <!--<label>的for對應到<input type=file>的id，就可以設定不同的css-->
     <label for="upload" class="upload_btn_style">
       <img :src="uploadIcon" width="40" height="40" />
     </label>
