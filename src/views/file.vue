@@ -9,12 +9,20 @@
       </div>
 
       <div v-else-if="fileType === 'application/pdf'" class="pdf_container">
-        <VuePdf
-          v-for="page in numOfPages"
-          :key="page"
-          :src="pdfSrc"
-          :page="page"
-        />
+        <div class="pdf_wrapper">
+          <VuePdf
+            :key="currentPages"
+            :src="pdfSrc"
+            :page="currentPages"
+            :scale="0.75"
+            class="pdf"
+          />
+        </div>
+        <div class="page_btn">
+          <button class="last_btn" @click="lastPage">上一頁</button>
+          <p class="pages">第 {{ currentPages }} 頁 / 共 {{ totalPages }} 頁</p>
+          <button class="next_btn" @click="nextPage">下一頁</button>
+        </div>
       </div>
 
       <div v-else>
@@ -40,43 +48,40 @@ const fileURL = route.query.file || "";
 const fileType = route.query.type || "";
 
 const pdfSrc = ref(fileURL);
-const numOfPages = ref(0);
+
+//PDF檔案的總頁數
+const totalPages = ref(0);
+
+const currentPages = ref(1);
 
 onMounted(() => {
   if (fileType === "application/pdf") {
     const loadingTask = createLoadingTask(pdfSrc.value);
     loadingTask.promise.then((pdf) => {
-      numOfPages.value = pdf.numPages;
+      totalPages.value = pdf.numPages;
     });
   }
 });
+
+const lastPage = () => {
+  if (currentPages.value > 1) {
+    currentPages.value--;
+    console.log("目前畫面：", currentPages.value);
+  }
+};
+
+const nextPage = () => {
+  if (currentPages.value < totalPages.value) {
+    currentPages.value++;
+    console.log("目前畫面：", currentPages.value);
+  }
+};
 
 console.log("fileType:", fileType);
 console.log("fileURL:", fileURL);
 </script>
 
 <style scoped>
-.image_container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.image {
-  width: 60%;
-}
-.pdf {
-  height: 100%;
-  width: 90%;
-}
-.pdf_container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 90%;
-  width: 100%;
-}
 .file_container {
   height: 100vh;
   width: 100vw;
@@ -93,5 +98,43 @@ console.log("fileURL:", fileURL);
   justify-content: center;
   align-items: center;
   background-color: #dfd5ce;
+}
+.image_container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.image {
+  width: 60%;
+}
+.pdf_container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+  height: 100%;
+}
+.pdf_wrapper {
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.page_btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+}
+.pages{
+  margin: 0;
+}
+.last_btn,
+.next_btn {
+  height: 30px;
 }
 </style>
