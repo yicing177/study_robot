@@ -85,8 +85,14 @@ const switchShelf = (shelfName) => {
 };
 
 const viewFile = (book) => {
-  const fileURL = book.url || book.file; // 替換成你實際存的欄位
+  const fileURL = book.file_url //|| book.file; // 替換成你實際存的欄位
   const fileType = book.type || "application/pdf";
+  
+  if (!fileURL) {
+    console.error(' 找不到文件 URL');
+    return;
+  }
+
   if (fileURL) {
     router.push({
       path: "/file",
@@ -95,7 +101,10 @@ const viewFile = (book) => {
         type: fileType,
       },
     });
+  } else{
+    console.error("不能獨文件 url")
   }
+
 };
 </script>
 

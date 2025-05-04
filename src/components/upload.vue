@@ -79,10 +79,14 @@ const viewFile = () => {
   if (!uploadedMaterial.value) return;
   const { file_url: url, title, type } = uploadedMaterial.value;
   
+  if (!url) {
+    console.error('❌ uploadedMaterial 里没有 file_url:', uploadedMaterial.value);
+    return;
+  }
     // 儲存教材到 localStorage
     const savedFiles = JSON.parse(localStorage.getItem("uploadedFiles")|| "[]");
     savedFiles.push({
-      name: title, type, url
+      name: title, type, file_url:url
     });
     localStorage.setItem("uploadedFiles", JSON.stringify(savedFiles));
 
@@ -97,25 +101,18 @@ const viewFile = () => {
 };
 const confirmUpload = () => {
   if(!uploadedMaterial.value) return;
-  const { url, title, type, name, user_id, upload_time } = uploadedMaterial.value;
-    // 先取出舊資料
-    const existing = JSON.parse(localStorage.getItem("uploadedFiles") || "[]");
+  const { file_url, title, type,  } = uploadedMaterial.value;
 
-    // 加入 Firebase 上傳成功的教材資訊
-  existing.push({
-    name: name || title,  // 可根據實際欄位選擇
-    title,
-    type,
-    url,
-    user_id,
-    upload_time,
-  });
-    // 存回 localStorage
-    localStorage.setItem("uploadedFiles", JSON.stringify(existing));
-  
+    const savedFiles = JSON.parse(localStorage.getItem("uploadedFiles")|| "[]");
+    savedFiles.push({
+      name: title, type, file_url ,
+    });
+        // 存回 localStorage
+    localStorage.setItem("uploadedFiles", JSON.stringify(savedFiles));
+
   uploadCompleted.value = false;
   selectedFile.value = null;
-  console.log("🚀 確認 Firebase 回傳的資料", uploadedMaterial.value);
+  console.log("🚀 確認 Firebase 回傳的資料", existing);
 };
 </script>
 
