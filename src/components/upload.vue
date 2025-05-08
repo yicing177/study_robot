@@ -51,7 +51,6 @@ const handleFileUpload = async(event) => {
   formData.append("title", file.name);
   
 
-
   try {
     //真正發送請求」到 Flask 後端
     const res = await axios.post("http://localhost:5000/upload_material", formData, {
@@ -84,11 +83,10 @@ const viewFile = () => {
     return;
   }
     // 儲存教材到 localStorage
-    const savedFiles = JSON.parse(localStorage.getItem("uploadedFiles")|| "[]");
-    savedFiles.push({
-      name: title, type, file_url:url
+    const files = JSON.parse(localStorage.getItem("uploadedFiles")|| "[]");
+    files.push({name: title, type, file_url:url
     });
-    localStorage.setItem("uploadedFiles", JSON.stringify(savedFiles));
+    localStorage.setItem("uploadedFiles", JSON.stringify(files));
 
     router.push({
       path: "/file",
@@ -103,16 +101,14 @@ const confirmUpload = () => {
   if(!uploadedMaterial.value) return;
   const { file_url, title, type,  } = uploadedMaterial.value;
 
-    const savedFiles = JSON.parse(localStorage.getItem("uploadedFiles")|| "[]");
-    savedFiles.push({
-      name: title, type, file_url ,
-    });
+    const files = JSON.parse(localStorage.getItem("uploadedFiles")|| "[]");
+    files.push({name: title, type, file_url ,});
         // 存回 localStorage
-    localStorage.setItem("uploadedFiles", JSON.stringify(savedFiles));
+    localStorage.setItem("uploadedFiles", JSON.stringify(files));
 
   uploadCompleted.value = false;
   selectedFile.value = null;
-  console.log("🚀 確認 Firebase 回傳的資料", existing);
+  console.log("🚀 確認 Firebase 回傳的資料", files);
 };
 </script>
 

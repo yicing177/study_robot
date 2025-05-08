@@ -39,20 +39,32 @@
 <script setup>
 import { useRoute } from "vue-router";
 import { VuePdf, createLoadingTask } from "vue3-pdfjs";
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch,computed } from "vue";
 import chat_bottom from "../components/chat_bottom.vue";
 
 const route = useRoute();
-
-const fileURL = route.query.file || "";
-const fileType = route.query.type || "";
-
-const pdfSrc = ref(fileURL);
-
+const showPreview = ref(false)  
+const fileURL  = computed(() => route.query.file  || '');
+const fileType = computed(() => route.query.type  || '');
+const pdfSrc   = ref('');
 //PDF檔案的總頁數
 const totalPages = ref(0);
-
 const currentPages = ref(1);
+//邱
+watch(() => [fileURL.value, fileType.value],([url, type]) => {
+    pdfSrc.value = url
+    currentPages.value = 1
+    totalPages.value = 0
+    if (type === 'application/pdf' && url) {
+      createLoadingTask(url).promise.then(pdf => {
+        totalPages.value = pdf.numPages
+      })
+    }
+    //showPreview.value=true;
+  },
+  { immediate: true }
+  
+)
 
 onMounted(() => {
   if (fileType === "application/pdf") {
