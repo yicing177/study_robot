@@ -35,7 +35,7 @@ const uploadedMaterial = ref(null);
 const selectedFile = ref(null);
 const router = useRouter();
 
-const handleFileUpload = async(event) => {
+const handleFileUpload = async (event) => {
   const file = event.target.files[0];
   if (!file) return;
   selectedFile.value = file;
@@ -43,25 +43,28 @@ const handleFileUpload = async(event) => {
   //初始化進度與上傳狀態
   uploading.value = true;
   progress.value = 0;
-  
-  // 建立 FormData 並傳給 Flask 後端  
+
+  // 建立 FormData 並傳給 Flask 後端
   const formData = new FormData();
   formData.append("file", file);
   formData.append("user_id", "test-user"); // 可以根據登入帳號改(待處理)
   formData.append("title", file.name);
-  
 
   try {
     //真正發送請求」到 Flask 後端
-    const res = await axios.post("http://localhost:5000/upload_material", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data"
-      },
-      //實際根據檔案大小計算上傳進度
-      onUploadProgress: (e) => {
-        progress.value = Math.round((e.loaded * 100) / e.total);
-      },
-    });
+    const res = await axios.post(
+      "http://localhost:5000/upload_material",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        //實際根據檔案大小計算上傳進度
+        onUploadProgress: (e) => {
+          progress.value = Math.round((e.loaded * 100) / e.total);
+        },
+      }
+    );
     //拿到後端回傳的 Firebase 儲存結果：URL、type、title
     uploadedMaterial.value = res.data.material;
     uploadCompleted.value = true;
@@ -73,38 +76,41 @@ const handleFileUpload = async(event) => {
   }
 };
 
-
 const viewFile = () => {
   if (!uploadedMaterial.value) return;
   const { file_url: url, title, type } = uploadedMaterial.value;
-  
+
   if (!url) {
-    console.error('❌ uploadedMaterial 里没有 file_url:', uploadedMaterial.value);
+    console.error(
+      "❌ uploadedMaterial 里没有 file_url:",
+      uploadedMaterial.value
+    );
     return;
   }
-    // 儲存教材到 localStorage
-    const files = JSON.parse(localStorage.getItem("uploadedFiles")|| "[]");
-    files.push({name: title, type, file_url:url
-    });
-    localStorage.setItem("uploadedFiles", JSON.stringify(files));
+  // 儲存教材到 localStorage
+  const files = JSON.parse(localStorage.getItem("uploadedFiles") || "[]");
+  files.push({ name: title, type, file_url: url });
+  localStorage.setItem("uploadedFiles", JSON.stringify(files));
 
-    router.push({
-      path: "/file",
-      query: { 
-        file: url,         //  Firebase Storage 的 URL
-        type: type,        // 檔案類型，例如 "application/pdf"
-        title: title       //  顯示的名稱 },
-      }     
-    });
+  router.push({
+    path: "/file",
+    query: {
+      file: url, //  Firebase Storage 的 URL
+      type: type, // 檔案類型，例如 "application/pdf"
+      title: title, //  顯示的名稱 },
+    },
+  });
+  uploadCompleted.value = false;
 };
-const confirmUpload = () => {
-  if(!uploadedMaterial.value) return;
-  const { file_url, title, type,  } = uploadedMaterial.value;
 
-    const files = JSON.parse(localStorage.getItem("uploadedFiles")|| "[]");
-    files.push({name: title, type, file_url ,});
-        // 存回 localStorage
-    localStorage.setItem("uploadedFiles", JSON.stringify(files));
+const confirmUpload = () => {
+  if (!uploadedMaterial.value) return;
+  const { file_url, title, type } = uploadedMaterial.value;
+
+  const files = JSON.parse(localStorage.getItem("uploadedFiles") || "[]");
+  files.push({ name: title, type, file_url });
+  // 存回 localStorage
+  localStorage.setItem("uploadedFiles", JSON.stringify(files));
 
   uploadCompleted.value = false;
   selectedFile.value = null;

@@ -12,7 +12,7 @@ import Return from "@/components/return.vue";
     <Return v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/' && route.path !== '/file' "/>
     <Music v-if="route.path !== '/login' && route.path !== '/quiz' && route.path !== '/register' && route.path !== '/myBook' && route.path !== '/calendar'" />
   </div>
-  <router-view />
+  <router-view :key="$route.fullPath" />
 </template>
 
 <style scoped>
