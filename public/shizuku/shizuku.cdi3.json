@@ -129,62 +129,62 @@
 		{
 			"Id": "PARAM_ARM_L",
 			"GroupId": "",
-			"Name": "左肘1"
+			"Name": "左腕"
 		},
 		{
 			"Id": "PARAM_ARM_L_02",
 			"GroupId": "",
-			"Name": "左腕1"
+			"Name": "左腕２"
 		},
 		{
 			"Id": "PARAM_HAND_L",
 			"GroupId": "",
-			"Name": "左手掌1"
+			"Name": "左手"
 		},
 		{
 			"Id": "PARAM_ARM_R",
 			"GroupId": "",
-			"Name": "右肘1"
+			"Name": "右腕"
 		},
 		{
 			"Id": "PARAM_ARM_R_02",
 			"GroupId": "",
-			"Name": "右腕1"
+			"Name": "右腕２"
 		},
 		{
 			"Id": "PARAM_HAND_R",
 			"GroupId": "",
-			"Name": "右手掌1"
+			"Name": "右手"
 		},
 		{
 			"Id": "PARAM_ARM_02_L_01",
 			"GroupId": "",
-			"Name": "左手2x"
+			"Name": "左腕３"
 		},
 		{
 			"Id": "PARAM_ARM_02_L_02",
 			"GroupId": "",
-			"Name": "左手2y"
+			"Name": "左腕４"
 		},
 		{
 			"Id": "PARAM_HAND_02_L",
 			"GroupId": "",
-			"Name": "左手掌２"
+			"Name": "左手２"
 		},
 		{
 			"Id": "PARAM_ARM_02_R_01",
 			"GroupId": "",
-			"Name": "右手2x"
+			"Name": "右腕３"
 		},
 		{
 			"Id": "PARAM_ARM_02_R_02",
 			"GroupId": "",
-			"Name": "右手2y"
+			"Name": "右腕４"
 		},
 		{
 			"Id": "PARAM_HAND_02_R",
 			"GroupId": "",
-			"Name": "右手掌２"
+			"Name": "右手２"
 		},
 		{
 			"Id": "PARAM_KAMIYURE_FRONT",
