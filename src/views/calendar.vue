@@ -4,7 +4,6 @@ import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import { INITIAL_EVENTS, createEventId } from "@/fullcalendar/event-utils.js";
 import axios from "axios";
 
 export default defineComponent({
@@ -25,7 +24,7 @@ export default defineComponent({
           right: "dayGridMonth,timeGridWeek,timeGridDay",
         },
         initialView: "dayGridMonth",
-        initialEvents: INITIAL_EVENTS, // alternatively, use the `events` setting to fetch from a feed
+        events:[], // alternatively, use the `events` setting to fetch from a feed
         editable: true,
         selectable: true,
         selectMirror: true,
@@ -49,33 +48,90 @@ export default defineComponent({
     },
     handleDateSelect(selectInfo) {
       let title = prompt("Please enter a new title for your event");
-      let calendarApi = selectInfo.view.calendar;
+      if(!title) return;// ← 沒輸入就跳出
+      //let calendarApi = selectInfo.view.calendar;
+      //calendarApi.unselect(); // clear date selection
 
-      calendarApi.unselect(); // clear date selection
-
-      if (title) {
-        calendarApi.addEvent({
-          id: createEventId(),
-          title,
-          start: selectInfo.startStr,
-          end: selectInfo.endStr,
-          allDay: selectInfo.allDay,
+      const payload = {
+        title,
+        user_id: localStorage.getItem("uid"),  // or 你用的登入方式
+        datetime: selectInfo.startStr,
+        content: "",  // 可加上說明
+        xposition: 0,
+        yposition: 0,
+      };
+      console.log("送出的 payload:", payload);
+    axios.post("http://localhost:5000/calendar", payload, {
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })
+      .then(res => {
+        const newEvent = res.data.calendar;
+        selectInfo.view.calendar.addEvent({
+          id: newEvent.calendar_id,
+          title: newEvent.title,
+          start: newEvent.datetime,
+          allDay: true,
         });
-      }
-    },
+      })
+      .catch(err => {
+        console.error("新增失敗", err);
+        alert("新增事件失敗");
+      });
+    selectInfo.view.calendar.unselect(); // 清除選取
+  },
+
+    //   if (title) {
+    //     calendarApi.addEvent({
+    //       id: createEventId(),
+    //       title,
+    //       start: selectInfo.startStr,
+    //       end: selectInfo.endStr,
+    //       allDay: selectInfo.allDay,
+    //     });
+    //   }
+    // },
     handleEventClick(clickInfo) {
-      if (
-        confirm(
-          `Are you sure you want to delete the event '${clickInfo.event.title}'`
-        )
-      ) {
-        clickInfo.event.remove();
+      if (confirm(`確認刪除事件 '${clickInfo.event.title}'？`)) {
+        const id = clickInfo.event.id;
+        axios.delete(`http://localhost:5000/calendar/${id}`)
+          .then(() => {
+            clickInfo.event.remove();
+          })
+          .catch(err => {
+            console.error("刪除失敗", err);
+            alert("刪除事件失敗");
+          });
       }
     },
+
     handleEvents(events) {
       this.currentEvents = events;
     },
+
   },
+  mounted() {
+  const uid = localStorage.getItem("uid");
+
+  this.calendarOptions.select = this.handleDateSelect;
+  this.calendarOptions.eventClick = this.handleEventClick;
+  this.calendarOptions.eventsSet = this.handleEvents;
+
+  axios.get(`http://localhost:5000/calendar?user_id=${uid}`)
+    .then(res => {
+      const events = res.data.map(e => ({
+        id: e.calendar_id,
+        title: e.title,
+        start: e.datetime,
+        allDay: true
+      }));
+      this.calendarOptions.events = events;
+    })
+    .catch(err => {
+      console.error("載入行事曆失敗", err);
+    });
+  }
 });
 </script>
 
