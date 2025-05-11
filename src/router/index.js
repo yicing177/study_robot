@@ -10,7 +10,7 @@ import Robot from "@/components/robot.vue";
 import chat_bottom from "@/components/chat_bottom.vue";
 
 const routes = [
-  { path: "/", component: home }, // 首頁
+  { path: "/", name: "HomePage", component: home }, // 首頁
   { path: "/register", component: register }, // 註冊
   { path: "/login", component: login }, // 登入
   { path: "/calendar", component: calendar }, // 行事曆

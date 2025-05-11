@@ -4,6 +4,7 @@ const route = useRoute();
 import Function from "./components/function.vue";
 import Music from "./components/music.vue";
 import Return from "@/components/return.vue";
+import FloatingBottom from '@/components/floating_bottom.vue';
 </script>
 
 <template>
@@ -13,6 +14,10 @@ import Return from "@/components/return.vue";
     <Music v-if="route.path !== '/login' && route.path !== '/quiz' && route.path !== '/register' && route.path !== '/myBook' && route.path !== '/calendar'" />
   </div>
   <router-view />
+  <div id="app">
+    <router-view />
+    <FloatingBottom />
+  </div>
 </template>
 
 <style scoped>
