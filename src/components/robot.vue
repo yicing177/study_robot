@@ -29,7 +29,7 @@ onMounted(async () => {
   });
 
   // 載入 Live2D 模型
-  model = await Live2DModel.from("../public/shizuku/shizuku_t02.model3.json");
+  model = await Live2DModel.from("../public/shizuku/shizuku.model3.json");
   app.stage.addChild(model);
 
   // 設定 Live2D 模型

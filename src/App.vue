@@ -13,11 +13,13 @@ import FloatingBottom from '@/components/floating_bottom.vue';
     <Return v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/' && route.path !== '/file' "/>
     <Music v-if="route.path !== '/login' && route.path !== '/quiz' && route.path !== '/register' && route.path !== '/myBook' && route.path !== '/calendar'" />
   </div>
-  <router-view />
+
   <div id="app">
     <router-view />
     <FloatingBottom />
   </div>
+  <router-view :key="$route.fullPath" />
+
 </template>
 
 <style scoped>
