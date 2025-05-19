@@ -15,8 +15,8 @@ import FloatingBottom from '@/components/floating_bottom.vue';
   </div>
   <router-view />
   <div id="app">
-    <router-view />
-    <FloatingBottom />
+    <router-view /> <!-- 所有頁面會渲染 -->
+    <FloatingBottom /> <!--小女孩按鈕固定出現 -->
   </div>
 </template>
 
