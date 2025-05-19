@@ -8,12 +8,12 @@
     @mouseup="endDrag"
     @click="handleClick"
   >
-    <img :src="girlIcon" class="girl-icon" />
+  
   </div>
 </template>
 
 <script setup>
-import girlIcon from '@/assets/image/tempImageVKGXox 3.png'; // ✅ 確保圖片名稱無錯字、空白要正確避開
+import girlIcon from '@/assets/image/sprite_button.png'; // 確保圖片名稱無錯字、空白要正確避開
 
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
@@ -61,25 +61,24 @@ onMounted(() => {
 <style scoped>
 .floating-button {
   position: fixed;
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
+  background-image: url('@/assets/image/sprite_button.png'); /* 換你的圖 */
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;
   cursor: pointer;
   z-index: 9999;
-
-  background-color: rgba(255, 255, 255, 0.9); /* 白底，40% 透明 */
-  border: 2px solid gray(0, 0, 0, 0.6);        /* 灰邊，40% 透明 */
-  border-radius: 50%;
-
-  transition: transform 2s cubic-bezier(0.4, 0, 0.2, 1), opacity 2s ease;
-  opacity: 0.7; /* 整體半透明 */
+  opacity:0.8;
 }
+
 .floating-button.animate {
   transform: scale(16);      /* 變大 */
   opacity: 0;               /* 淡出 */
 }
 .girl-icon {
-  width: 100%;
-  height: 100%;
+  width: 90%;
+  height: 90%;
   border-radius: 50%;
   object-fit: cover;
 }

@@ -15,8 +15,10 @@ import FloatingBottom from '@/components/floating_bottom.vue';
   </div>
 
   <div id="app">
+
     <router-view :key="$route.fullPath" />
     <FloatingBottom v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/'"/>
+
   </div>
 
 </template>
