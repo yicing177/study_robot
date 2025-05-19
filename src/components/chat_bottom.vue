@@ -16,96 +16,46 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from "vue";
-import { useRouter } from "vue-router";
+import { ref, watch, defineProps, defineEmits } from "vue";
 import Upload from "@/components/upload.vue";
+import axios from "axios";
 
+const emit = defineEmits(["updateMessages"]);
 const props = defineProps({
-  messages: {
-    type: Array,
-    default: () => [],
+  initialText: {
+    type: String,
+    default: "",
   },
 });
 
-const emit = defineEmits(["updateMessages"]);
-
-const inputText = ref("");
-
-const sendMessage = () => {
-  console.log("Button clicked!");
-  console.log("Input text:", inputText.value);
-  if (inputText.value.trim()) {
-    emit("updateMessages", inputText.value); // 向父组件发送消息
-    inputText.value = ""; // 清空输入框
+const inputText = ref(props.initialText);
+// 如果 props.initialText 改變 → 更新 inputText
+watch(
+  () => props.initialText,
+  (newVal) => {
+    inputText.value = newVal;
   }
-};
+);
+const sendMessage = async () => {
+  if (!inputText.value.trim()) return;
 
-const uploading = ref(false); // 控制是否顯示上傳進度
-const uploadCompleted = ref(false); // 控制是否顯示完成按鈕
-const progress = ref(0); // 模擬進度條
+  const userMessage = inputText.value;
+  inputText.value = ""; // 清空輸入框
 
-const selectedFile = ref(null);
+  // 顯示使用者訊息
+  emit("updateMessages", { role: "user", text: userMessage });
 
-const handleFileUpload = (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
-  selectedFile.value = file;
-
-  // 開始模擬上傳
-  uploading.value = true;
-  uploadCompleted.value = false;
-  progress.value = 0;
-
-  const interval = setInterval(() => {
-    if (progress.value >= 100) {
-      clearInterval(interval);
-      uploading.value = false;
-      uploadCompleted.value = true;
-    } else {
-      progress.value += 5; // 每次加5%
-    }
-  }, 50); // 每100ms 更新一次
-};
-
-const router = useRouter();
-
-const viewFile = () => {
-  if (selectedFile.value) {
-    const fileURL = URL.createObjectURL(selectedFile.value);
-
-    // 儲存教材到 localStorage
-    const savedFiles = JSON.parse(localStorage.getItem("uploadedFiles")) || [];
-    savedFiles.push({
-      name: selectedFile.value.name,
-      type: selectedFile.value.type,
-      url: fileURL,
-    });
-    localStorage.setItem("uploadedFiles", JSON.stringify(savedFiles));
-
-    router.push({
-      path: "/file",
-      query: { file: fileURL, type: selectedFile.value.type },
-    });
-  }
-};
-const confirmUpload = () => {
-  if (selectedFile.value) {
-    const fileURL = URL.createObjectURL(selectedFile.value);
-    // 先取出舊資料
-    const existing = JSON.parse(localStorage.getItem("uploadedFiles")) || [];
-
-    // 加入新書籍資料
-    existing.push({
-      name: selectedFile.value.name,
-      type: selectedFile.value.type,
-      url: fileURL,
+  try {
+    const res = await axios.post("http://localhost:5000/ask", {
+      message: userMessage,
+      user_id: "test_user",
     });
 
-    // 存回 localStorage
-    localStorage.setItem("uploadedFiles", JSON.stringify(existing));
+    const botReply = res.data.reply;
+    emit("updateMessages", { role: "bot", text: botReply });
+  } catch (err) {
+    console.error("GPT 回覆失敗", err);
   }
-  uploadCompleted.value = false;
-  selectedFile.value = null;
 };
 </script>
 
