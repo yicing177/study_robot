@@ -4,7 +4,9 @@
       <Robot />
     </div>
     <div class="chat_right_container">
-      <chat_right />
+      <chat_right
+        :messages="[]"
+      />
     </div>
   </div>
 </template>
@@ -12,7 +14,6 @@
 <script setup>
 import Robot from "@/components/Robot.vue";
 import chat_right from "@/components/chat_right.vue";
-
 </script>
 
 <style scoped>
@@ -49,6 +50,5 @@ import chat_right from "@/components/chat_right.vue";
 ::v-deep(canvas) {
   transform-origin: bottom center;
   transform: scale(1.5);
-  
 }
 </style>
