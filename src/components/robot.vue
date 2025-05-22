@@ -29,7 +29,7 @@ onMounted(async () => {
   });
 
   // 載入 Live2D 模型
-  model = await Live2DModel.from("../public/shizuku/shizuku.model3.json");
+  model = await Live2DModel.from("../public/shizuku_t02/shizuku_t02.model3.json");
   app.stage.addChild(model);
 
   // 設定 Live2D 模型
@@ -74,7 +74,25 @@ onMounted(async () => {
   }
 
   startMotionLoop();
-  
+
+  //測試shizuku_t02全部motion
+  //播放 01~10.motion3.json，對應 model3.json 的 "TapBody"
+  /*
+  const motionCount = 10;
+  let currentMotion = 0;
+
+  async function playMotions() {
+    currentMotion = 0
+    while (currentMotion < motionCount) {
+      console.log(`播放動畫 ${currentMotion + 1}`);
+      await model.motion("TapBody", currentMotion);
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // 停頓 1 秒
+      currentMotion++;
+    }
+  }
+  playMotions();
+  */
+
   onBeforeUnmount(() => {
     stopMotionLoop();
     model?.destroy();
