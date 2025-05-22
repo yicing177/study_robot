@@ -20,11 +20,15 @@ import { ref, watch, defineProps, defineEmits } from "vue";
 import Upload from "@/components/upload.vue";
 import axios from "axios";
 
-const emit = defineEmits(["updateMessages"]);
+const emit = defineEmits(["updateMessages", "sendWithText"]);
 const props = defineProps({
   initialText: {
     type: String,
     default: "",
+  },
+  handleSelfMessage: {
+    type: Boolean,
+    default: false,
   },
 });
 
@@ -37,13 +41,15 @@ watch(
   }
 );
 const sendMessage = async () => {
+  //如果輸入框是空的就結束
   if (!inputText.value.trim()) return;
 
+  emit("sendWithText", inputText.value);
   const userMessage = inputText.value;
   inputText.value = ""; // 清空輸入框
-
-  // 顯示使用者訊息
-  emit("updateMessages", { role: "user", text: userMessage });
+  if (props.handleSelfMessage) {
+    emit("updateMessages", { role: "user", text: userMessage });
+  }
 
   try {
     const res = await axios.post("http://localhost:5000/ask", {

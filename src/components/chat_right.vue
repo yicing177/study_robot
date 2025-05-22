@@ -33,43 +33,63 @@
 </template>
 
 <script setup>
-import Upload from "@/components/upload.vue"
-import { ref, watch, nextTick } from "vue"
-import axios from "axios"
+import Upload from "@/components/upload.vue";
+import { ref, watch, nextTick } from "vue";
+import axios from "axios";
 
-const inputText = ref("")
-const messages = ref([])
-const dialogWrapper = ref(null)
+// ✨ props 傳入初始訊息
+const props = defineProps({
+  initialText: String,
+});
 
-// 自動捲到底部
+// ✏️ 本地 state
+const inputText = ref("");
+const messages = ref([]);
+const dialogWrapper = ref(null);
+
+// ✅ 自動捲到底部
 watch(messages, async () => {
-  await nextTick()
+  await nextTick();
   if (dialogWrapper.value) {
-    dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight
+    dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
   }
-})
+});
 
+// ✅ 發送訊息
 const sendMessage = async () => {
-  if (!inputText.value.trim()) return
+  if (!inputText.value.trim()) return;
 
-  const userMessage = inputText.value
-  inputText.value = ""
-  messages.value.push({ role: "user", text: userMessage })
+  const userMessage = inputText.value;
+  inputText.value = "";
+  messages.value.push({ role: "user", text: userMessage });
 
   try {
     const res = await axios.post("http://localhost:5000/ask", {
       message: userMessage,
       user_id: "test_user",
-    })
-    const botReply = res.data.reply
-    messages.value.push({ role: "bot", text: botReply })
+    });
+    const botReply = res.data.reply;
+    messages.value.push({ role: "bot", text: botReply });
   } catch (err) {
     messages.value.push({
       role: "bot",
       text: "發生錯誤，請稍後再試一次。",
-    })
+    });
   }
-}
+};
+
+// ✅ 偵測 initialText 並立即送出
+watch(
+  () => props.initialText,
+  (newText) => {
+    if (newText?.trim()) {
+      inputText.value = newText;
+      sendMessage();
+    }
+  },
+  { immediate: true }
+);
+
 </script>
 
 <style scoped>
@@ -83,7 +103,6 @@ const sendMessage = async () => {
   align-items: center;
 }
 
-/* ✅ 對話顯示區 */
 .chat_right_dialog {
   position: relative;
   width: 85%;
@@ -97,7 +116,6 @@ const sendMessage = async () => {
   bottom: 10px;
 }
 
-/* ✅ 對話氣泡 */
 .bubble {
   max-width: 80%;
   padding: 10px 14px;
@@ -115,7 +133,6 @@ const sendMessage = async () => {
   align-self: flex-start;
 }
 
-/* ✅ 輸入框區域 */
 .chat_box {
   width: 85%;
   border-radius: 10px;

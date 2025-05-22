@@ -34,6 +34,7 @@
       <chat_bottom
         :initialText="inputText"
         :messages="messages"
+        :handleSelfMessage="true"
         @updateMessages="addMessage"
       />
       <button class="toggle_btn" @click="isChatOpen = !isChatOpen">
@@ -70,12 +71,17 @@ const setInputText = (msg) => {
 };
 
 const dialogWrapper = ref(null);
-watch([messages, isChatOpen], async () => {
-  await nextTick();
-  if (dialogWrapper.value) {
-    dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
+
+watch(
+  [() => messages.value.length, () => isChatOpen.value],
+  async () => {
+    await nextTick();
+    if (dialogWrapper.value) {
+      dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
+    }
   }
-});
+);
+
 
 import { useWebGazer } from "@/composables/useWebGazer";
 
