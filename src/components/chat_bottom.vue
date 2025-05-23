@@ -52,7 +52,7 @@ const sendMessage = async () => {
   }
 
   try {
-    const res = await axios.post("http://localhost:5000/ask", {
+    const res = await axios.post("http://localhost:5000/gpt/ask", {
       message: userMessage,
       user_id: "test_user",
     });

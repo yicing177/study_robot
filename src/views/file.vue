@@ -123,7 +123,7 @@ const handleSendWithText = async (text) => {
   messages.value.push({ role: "user", text }); 
 
   try {
-    const res = await axios.post("http://localhost:5000/ask", {
+    const res = await axios.post("http://localhost:5000/gpt/ask", {
       message: text,
       user_id: "test_user",
     });
