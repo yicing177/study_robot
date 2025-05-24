@@ -29,7 +29,7 @@ onMounted(async () => {
   });
 
   // 載入 Live2D 模型
-  model = await Live2DModel.from("../public/shizuku/shizuku.model3.json");
+  model = await Live2DModel.from("../public/shizuku_t02/shizuku_t02.model3.json");
   app.stage.addChild(model);
 
   // 設定 Live2D 模型
@@ -41,7 +41,7 @@ onMounted(async () => {
     model.scale.set(window.innerWidth / 2000);
     model.position.set(app.renderer.width / 2, app.renderer.height / 2);
   });
-
+  /* 原本動畫
   // 設定動畫
   const motion05 = "05.motion3.json";
   const motion06 = "06.motion3.json";
@@ -51,11 +51,11 @@ onMounted(async () => {
   function playNextIdleMotion() {
     if (playCount < 3) {
       console.log(`正在播放: ${motion05} (第 ${playCount + 1} 次)`);
-      model.motion("Flick3", 0); // 播放第 0 個動作
+      model.motion("TapBody", 0); // 播放第 0 個動作
       playCount++;
     } else {
       console.log(`正在播放: ${motion06}`);
-      model.motion("Flick3", 1); // 播放第 1 個動作
+      model.motion("TapBody", 1); // 播放第 1 個動作
       playCount = 0; // 重置計數器
     }
   }
@@ -74,7 +74,24 @@ onMounted(async () => {
   }
 
   startMotionLoop();
-  
+  */
+
+  //測試shizuku_t02全部motion
+  //播放 01~10.motion3.json，對應 model3.json 的 "TapBody"
+  const motionCount = 10;
+  let currentMotion = 0;
+
+  async function playMotions() {
+    currentMotion = 0
+    while (currentMotion < motionCount) {
+      console.log(`播放動畫 ${currentMotion + 1}`);
+      await model.motion("TapBody", currentMotion);
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // 停頓 1 秒
+      currentMotion++;
+    }
+  }
+  playMotions();
+
   onBeforeUnmount(() => {
     stopMotionLoop();
     model?.destroy();

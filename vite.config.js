@@ -10,6 +10,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"), // 設定 @ 指向 src
     },
   },
+  define: {
+    global: {},
+  },
 });
 
 

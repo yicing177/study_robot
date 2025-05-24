@@ -1,11 +1,14 @@
 <template>
   <div class="chat_container">
+    <div v-if="isRecording" class="recording_hint">
+      🎤 錄音中... 再次點擊語音按鈕以停止
+    </div>
     <div class="chat_box">
       <div class="upload_btn">
         <Upload />
       </div>
       <input v-model="inputText" placeholder="輸入您的問題..." id="box" />
-      <div class="voice_btn">
+      <div class="voice_btn" @click="toggleRecording">
         <img src="../assets/logo/voice.svg" width="40" height="40" />
       </div>
       <button class="send_btn" @click="sendMessage">
@@ -20,11 +23,16 @@ import { ref, watch, defineProps, defineEmits } from "vue";
 import Upload from "@/components/upload.vue";
 import axios from "axios";
 
-const emit = defineEmits(["updateMessages"]);
+
+const emit = defineEmits(["updateMessages", "sendWithText"]);
 const props = defineProps({
   initialText: {
     type: String,
     default: "",
+  },
+  handleSelfMessage: {
+    type: Boolean,
+    default: false,
   },
 });
 
@@ -37,26 +45,151 @@ watch(
   }
 );
 const sendMessage = async () => {
+  //如果輸入框是空的就結束
   if (!inputText.value.trim()) return;
 
+  emit("sendWithText", inputText.value);
   const userMessage = inputText.value;
   inputText.value = ""; // 清空輸入框
-
-  // 顯示使用者訊息
-  emit("updateMessages", { role: "user", text: userMessage });
+  if (props.handleSelfMessage) {
+    emit("updateMessages", { role: "user", text: userMessage });
+  }
 
   try {
-    const res = await axios.post("http://localhost:5000/ask", {
+    const res = await axios.post("http://localhost:5000/gpt/ask", {
       message: userMessage,
       user_id: "test_user",
     });
 
     const botReply = res.data.reply;
     emit("updateMessages", { role: "bot", text: botReply });
+    await speak(botReply);
   } catch (err) {
     console.error("GPT 回覆失敗", err);
   }
 };
+//機器人語音回復
+const speak = async (text) => {
+  try {
+    const res = await axios.post("http://localhost:5000/routes/tts", {
+      text: text, // 這裡後端要能接受 raw text
+    });
+
+    const audioPath = res.data.file;
+    const audio = new Audio(
+      `http://localhost:5000/dir_tts_result/${audioPath}`
+    );
+    audio.play();
+  } catch (err) {
+    console.error("語音播放失敗：", err);
+  }
+};
+const isRecording = ref(false);
+let mediaRecorder = null;
+let audioChunks = [];
+
+let audioContext, source, processor, audioData;
+
+const toggleRecording = async () => {
+  if (isRecording.value) {
+    // ✅ 停止錄音
+    processor.disconnect();
+    source.disconnect();
+    isRecording.value = false;
+
+    const wavBuffer = encodeWAV(audioData, audioContext.sampleRate);
+    const blob = new Blob([wavBuffer], { type: "audio/wav" });
+    uploadAndSend(blob);
+    return;
+  }
+
+  // ✅ 開始錄音
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    source = audioContext.createMediaStreamSource(stream);
+    processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+    audioData = [];
+    processor.onaudioprocess = (e) => {
+      audioData.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    };
+
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+    isRecording.value = true;
+
+  } catch (err) {
+    console.error("無法開始錄音", err);
+  }
+};
+
+function encodeWAV(buffers, sampleRate) {
+  const length = buffers.reduce((acc, cur) => acc + cur.length, 0);
+  const buffer = new ArrayBuffer(44 + length * 2);
+  const view = new DataView(buffer);
+
+  function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i));
+    }
+  }
+
+  let offset = 0;
+
+  writeString(view, offset, "RIFF"); offset += 4;
+  view.setUint32(offset, 36 + length * 2, true); offset += 4;
+  writeString(view, offset, "WAVE"); offset += 4;
+  writeString(view, offset, "fmt "); offset += 4;
+  view.setUint32(offset, 16, true); offset += 4;
+  view.setUint16(offset, 1, true); offset += 2;
+  view.setUint16(offset, 1, true); offset += 2;
+  view.setUint32(offset, sampleRate, true); offset += 4;
+  view.setUint32(offset, sampleRate * 2, true); offset += 4;
+  view.setUint16(offset, 2, true); offset += 2;
+  view.setUint16(offset, 16, true); offset += 2;
+  writeString(view, offset, "data"); offset += 4;
+  view.setUint32(offset, length * 2, true); offset += 4;
+
+  let pos = offset;
+  for (let i = 0; i < buffers.length; i++) {
+    const buffer = buffers[i];
+    for (let j = 0; j < buffer.length; j++, pos += 2) {
+      const s = Math.max(-1, Math.min(1, buffer[j]));
+      view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    }
+  }
+
+  return buffer;
+}
+async function uploadAndSend(blob) {
+  const filename = `voice_${Date.now()}.wav`;
+  const formData = new FormData();
+  formData.append("file", blob, filename);
+
+  try {
+    await axios.post("http://localhost:5000/routes/upload_audio", formData);
+    const sttRes = await axios.post("http://localhost:5000/routes/stt", {
+      filename,
+    });
+    const filepath = sttRes.data.file;
+
+    const gptRes = await axios.post("http://localhost:5000/gpt/ask_from_stt", {
+      filepath,
+      user_id: "test_user",
+    });
+
+    const botReply = gptRes.data.reply;
+    emit("updateMessages", { role: "user", text: sttRes.data.transcript });
+    emit("updateMessages", { role: "bot", text: botReply.reply });
+    console.log("語音回覆內容：", botReply);
+    await speak(botReply.reply); // 🟢 只取出文字回應
+
+  } catch (err) {
+    console.error("語音處理錯誤", err);
+  }
+}
+
 </script>
 
 <style scoped>

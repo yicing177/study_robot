@@ -4,7 +4,7 @@
       <Robot />
     </div>
     <div class="chat_right_container">
-      <chat_right />
+      <chat_right :initialText="initialText" :initialMessages="quizStarter" />
     </div>
   </div>
 </template>
@@ -12,6 +12,20 @@
 <script setup>
 import Robot from "@/components/Robot.vue";
 import chat_right from "@/components/chat_right.vue";
+import { useRoute } from "vue-router";
+import { computed } from "vue";
+
+const route = useRoute();
+const initialText = computed(() => route.query.init || "");
+const quizStarter = [
+  { role: "bot", text: "請問你想要什麼難度的測驗？" },
+  {
+    role: "bot",
+    type: "buttons",
+    buttons: ["easy", "medium", "hard"],
+    text: "",
+  },
+];
 
 </script>
 
@@ -49,6 +63,5 @@ import chat_right from "@/components/chat_right.vue";
 ::v-deep(canvas) {
   transform-origin: bottom center;
   transform: scale(1.5);
-  
 }
 </style>
