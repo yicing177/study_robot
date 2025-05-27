@@ -1,7 +1,7 @@
 <template>
   <div class="background">
     <div class="chat_right_dialog" ref="dialogWrapper">
-      <div v-for="(msg, i) in messages" :key="i" :class="['bubble', msg.role]">
+      <div v-for="(msg, i) in props.messages" :key="i" :class="['bubble', msg.role]">
         <!-- 顯示訊息 -->
         <template v-if="!msg.type || msg.type === 'text'">
           {{ msg.text }}
@@ -101,7 +101,6 @@ import axios from "axios";
 import Upload from "@/components/upload.vue";
 
 const inputText = ref("");
-const messages = ref([]);
 const emit = defineEmits(["updateMessages", "sendWithText"]);
 const props = defineProps({
   initialText: String,
@@ -109,7 +108,12 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  messages: {
+    type: Array,
+    required: true, // ✅ 改為必填，避免 fallback 到空陣列
+  },
 });
+
 const dialogWrapper = ref(null);
 const selectedDifficulty = ref(null);
 const quizCount = ref("");
@@ -118,27 +122,22 @@ const quizQuestions = ref([]);
 const quizSubmitted = ref(false);
 
 onMounted(() => {
-  messages.value.push(...props.initialMessages);
+  props.messages.push(...props.initialMessages);
 });
 
-watch(messages, async () => {
-  await nextTick();
-  if (dialogWrapper.value) {
-    dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
-  }
-});
+
 
 const selectDifficulty = (level) => {
   selectedDifficulty.value = level;
-  messages.value.push({ role: "user", text: `我要選擇 ${level} 難度` });
-  messages.value.push({ role: "bot", type: "input", text: "你想要幾題？" });
+  props.messages.push({ role: "user", text: `我要選擇 ${level} 難度` });
+  props.messages.push({ role: "bot", type: "input", text: "你想要幾題？" });
 };
 
 const submitQuizCount = async () => {
   const num = parseInt(quizCount.value);
   if (!num || !selectedDifficulty.value) return;
 
-  messages.value.push({ role: "user", text: `我想要 ${num} 題` });
+  props.messages.push({ role: "user", text: `我想要 ${num} 題` });
 
   try {
     const res = await axios.post("http://localhost:5000/quiz/generate_quiz", {
@@ -161,7 +160,7 @@ const submitQuizCount = async () => {
 
     quizSubmitted.value = false;
   } catch (err) {
-    messages.value.push({ role: "bot", text: "出題失敗，請稍後再試。" });
+    props.messages.push({ role: "bot", text: "出題失敗，請稍後再試。" });
   }
 };
 
@@ -175,13 +174,13 @@ const submitAnswers = async () => {
     });
 
     const result = res.data;
-    messages.value.push({
+    props.messages.push({
       role: "bot",
       text: `✅ 你得了 ${result.score} / ${result.total} 分！`,
     });
 
     result.details.forEach((d, i) => {
-      messages.value.push({
+      props.messages.push({
         role: "bot",
         text: `第 ${i + 1} 題：你答 ${d.user_answer}，正解是 ${
           d.correct_answer
@@ -191,7 +190,7 @@ const submitAnswers = async () => {
 
     quizSubmitted.value = true;
   } catch (err) {
-    messages.value.push({ role: "bot", text: "提交失敗，請稍後再試一次。" });
+    props.messages.push({ role: "bot", text: "提交失敗，請稍後再試一次。" });
   }
 };
 
@@ -199,14 +198,14 @@ const sendMessage = async () => {
   if (!inputText.value.trim()) return;
   const userMessage = inputText.value;
   inputText.value = "";
-  messages.value.push({ role: "user", text: userMessage });
+  props.messages.push({ role: "user", text: userMessage });
 
   const res = await axios.post("http://localhost:5000/gpt/ask", {
     message: userMessage,
     user_id: "test_user",
   });
   const botReply = res.data.reply;
-  messages.value.push({ role: "bot", text: botReply });
+  props.messages.push({ role: "bot", text: botReply });
   await speak(botReply);
 };
 
@@ -322,8 +321,8 @@ async function uploadAndSend(blob) {
     });
 
     const botReply = gptRes.data.reply;
-    messages.value.push({ role: "user", text: sttRes.data.transcript });
-    messages.value.push({ role: "bot", text: botReply.reply });
+    props.messages.push({ role: "user", text: sttRes.data.transcript });
+    props.messages.push({ role: "bot", text: botReply.reply });
     console.log("語音回覆內容：", botReply);
     await speak(botReply.reply); // 🟢 只取出文字回應
 

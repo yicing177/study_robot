@@ -11,7 +11,7 @@ import FloatingBottom from '@/components/floating_bottom.vue';
   <div class="button">
     <Function v-if="route.path !== '/login' && route.path !== '/register'"/>
     <Return v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/' && route.path !== '/file' "/>
-    <Music v-if="route.path !== '/login' && route.path !== '/quiz' && route.path !== '/register' && route.path !== '/myBook' && route.path !== '/calendar'" />
+    <Music v-if="route.path !== '/login' && route.path !== '/quiz' && route.path !== '/register' && route.path !== '/myBook' && route.path !== '/calendar' && route.path !== '/file'" />
   </div>
 
   <div id="app">
