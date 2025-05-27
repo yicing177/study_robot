@@ -13,9 +13,6 @@
         @click="clickAudio(index)"
       >
         {{ music.name }}
-        <audio ref="audioElements">
-          <source :src="music.src" type="audio/ogg" />
-        </audio>
       </button>
     </ul>
   </div>
@@ -23,6 +20,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from "vue";
+import axios from "axios";
 
 // 控制音樂選單顯示與否
 const isListVisible = ref(false);
@@ -35,42 +33,27 @@ const toggleMusicList = () => {
 
 // 音樂清單
 const musicList = ref([
-  {
-    name: "鋼琴伴奏",
-    src: new URL("../assets/audio/鋼琴伴奏.mp3", import.meta.url).href,
-  },
-  {
-    name: "細雨綿綿",
-    src: new URL("../assets/audio/細雨綿綿.mp3", import.meta.url).href,
-  },
-  {
-    name: "輕快輕鬆",
-    src: new URL("../assets/audio/輕快輕鬆.mp3", import.meta.url).href,
-  },
-  {
-    name: "爵士抒情",
-    src: new URL("../assets/audio/爵士抒情.mp3", import.meta.url).href,
-  },
-  {
-    name: "海浪輕擊",
-    src: new URL("../assets/audio/海浪輕擊.mp3", import.meta.url).href,
-  },
-  {
-    name: "鳥兒啾鳴",
-    src: new URL("../assets/audio/鳥兒啾鳴.mp3", import.meta.url).href,
-  },
+  {name: "鋼琴伴奏",},
+  {name: "細雨綿綿",},
+  {name: "輕快輕鬆",},
+  {name: "爵士抒情",},
+  {name: "海浪輕擊",},
+  {name: "鳥兒啾鳴",},
 ]);
 
-// 音樂元素的 ref 陣列
-const audioElements = ref([]);
-
 // 播放對應的音樂
-const clickAudio = (index) => {
-  if (audioElements.value[index]) {
-    audioElements.value.forEach((audio) => audio.pause());
-    audioElements.value[index].currentTime = 0;
-    audioElements.value[index].play();
+const clickAudio = async(index) => {
+  try{
+    const title = musicList.value[index].name;
+    const res = await axios.get(`http://localhost:5000/music/${encodeURIComponent(title)}`);
+    const {url} = res.data;
+    const audio = new Audio(url);
+    audio.play();
+  } catch (err) {
+    console.error("播放失敗:", err);
+    alert("找不到這首歌請確認名稱");//彈跳視窗
   }
+
 };
 
 // 點擊畫面任何地方都會收起音樂列表
