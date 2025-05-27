@@ -39,9 +39,18 @@
         </div>
       </div>
     </div>
+    <div
+      v-if="selectedText"
+      class="highlight_options"
+      :style="`top: ${highlightPosition.y}px; left: ${highlightPosition.x}px;`"
+    >
+      <button @click="sendHighlight('read')">朗讀</button>
+      <button @click="sendHighlight('translate')">翻譯</button>
+      <button @click="sendHighlight('examples')">更多例句</button>
+    </div>
 
     <div v-if="showChatRight" class="chat_right_panel">
-    <!--ChatRight呼叫emit(updateMessages)時，也會觸發file的addMessage-->
+      <!--ChatRight呼叫emit(updateMessages)時，也會觸發file的addMessage-->
       <ChatRight
         :initialText="initialRightInput"
         :messages="messages"
@@ -62,7 +71,7 @@
 <script setup>
 import { useRoute } from "vue-router";
 import { VuePdf, createLoadingTask } from "vue3-pdfjs";
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, watch, computed, onUnmounted } from "vue";
 import ChatBottom from "../components/chat_bottom.vue";
 import ChatRight from "@/components/chat_right.vue";
 import axios from "axios";
@@ -120,7 +129,7 @@ const handleSendWithText = async (text) => {
   showChatRight.value = true;
 
   //把訊息加入陣列當中
-  messages.value.push({ role: "user", text }); 
+  messages.value.push({ role: "user", text });
 
   try {
     const res = await axios.post("http://localhost:5000/gpt/ask", {
@@ -148,6 +157,67 @@ const nextPage = () => {
   }
 };
 
+//反白
+const selectedText = ref("");
+
+const handleSelection = () => {
+  const selection = window.getSelection();
+  const text = selection.toString().trim();
+
+  if (text.length > 0) {
+    selectedText.value = text;
+
+    // 取得選取文字的範圍座標
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // 記錄座標（加上捲動量 offset）
+    highlightPosition.value = {
+      x: rect.left + window.scrollX,
+      y: rect.bottom + window.scrollX,
+    };
+  } else {
+    selectedText.value = "";
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("mouseup", handleSelection);
+});
+onUnmounted(() => {
+  window.removeEventListener("mouseup", handleSelection);
+});
+
+const highlightPosition = ref({ x: 0, y: 0 });
+const sendHighlight = async (action) => {
+  if (!selectedText.value) return;
+
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/highlight_action", {
+      user_id: "test_user",
+      text: selectedText.value,
+      action: action,
+    });
+
+    if (action === "read" && res.data.tts_url) {
+      const audio = new Audio(`http://localhost:5000${res.data.tts_url}`);
+      audio.play();
+    } else if (action === "translate" && res.data.reply) {
+      const sendMsg = "請幫我翻譯 " + selectedText.value;
+      messages.value.push({ role: "user", text: sendMsg });
+      showChatRight.value = true;
+      messages.value.push({ role: "bot", text: res.data.reply });
+    } else if (action === "examples" && res.data.reply) {
+      const sendMsg = "我想知道 " + selectedText.value + " 的更多例句";
+      messages.value.push({ role: "user", text: sendMsg });
+      showChatRight.value = true;
+      messages.value.push({ role: "bot", text: res.data.reply });
+    }
+    selectedText.value = "";
+  } catch (err) {
+    console.error("highlight_action 發生錯誤", err);
+  }
+};
 </script>
 
 <style scoped>
@@ -236,4 +306,16 @@ const nextPage = () => {
 .next_btn {
   height: 30px;
 }
+.highlight_options {
+  position: absolute;
+  background: #fffbe8;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px 10px;
+  z-index: 999;
+  display: flex;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 </style>
