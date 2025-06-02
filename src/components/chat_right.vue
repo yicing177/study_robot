@@ -1,7 +1,11 @@
 <template>
   <div class="background">
     <div class="chat_right_dialog" ref="dialogWrapper">
-      <div v-for="(msg, i) in props.messages" :key="i" :class="['bubble', msg.role]">
+      <div
+        v-for="(msg, i) in displayedMessages"
+        :key="i"
+        :class="['bubble', msg.role]"
+      >
         <!-- 顯示訊息 -->
         <template v-if="!msg.type || msg.type === 'text'">
           {{ msg.text }}
@@ -82,11 +86,7 @@
         @keydown.enter="sendMessage"
       />
       <div class="voice_btn" @click="toggleRecording">
-        <img
-          src="../assets/logo/voice.svg"
-          width="40"
-          height="40"
-        />
+        <img src="../assets/logo/voice.svg" width="40" height="40" />
       </div>
       <div class="send_btn" @click="sendMessage">
         <img src="../assets/logo/send.svg" width="40" height="40" />
@@ -96,7 +96,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, nextTick } from "vue";
+import { onMounted, ref, watch, computed } from "vue";
 import axios from "axios";
 import Upload from "@/components/upload.vue";
 
@@ -114,18 +114,26 @@ const props = defineProps({
   },
 });
 
+//處理本地對話
+const localMessages = ref([]);
+const isUsingLocal = computed(() => !props.messages);
+const displayedMessages = computed(() =>
+  isUsingLocal.value ? localMessages.value : props.messages
+);
+function appendMessage(message) {
+  if (props.messages) {
+    emit("updateMessages", message); // 傳給父層
+  } else {
+    localMessages.value.push(message); // 自己管
+  }
+}
+
 const dialogWrapper = ref(null);
 const selectedDifficulty = ref(null);
 const quizCount = ref("");
 const userAnswers = ref({});
 const quizQuestions = ref([]);
 const quizSubmitted = ref(false);
-
-onMounted(() => {
-  props.messages.push(...props.initialMessages);
-});
-
-
 
 const selectDifficulty = (level) => {
   selectedDifficulty.value = level;
@@ -145,11 +153,11 @@ const submitQuizCount = async () => {
       num_questions: num,
     });
 
-    const quiz = res.data.quiz;
+    const quiz = res.data.quiz; // ✅ 這邊定義 quiz
     quizQuestions.value = quiz;
 
     quiz.forEach((q, idx) => {
-      messages.value.push({
+      appendMessage({
         role: "bot",
         type: "quiz",
         index: idx,
@@ -157,7 +165,8 @@ const submitQuizCount = async () => {
         options: q.options,
       });
     });
-
+    console.log("✅ 從後端取得題目：", quiz);
+    console.log("📥 現在的 displayedMessages：", displayedMessages.value);
     quizSubmitted.value = false;
   } catch (err) {
     props.messages.push({ role: "bot", text: "出題失敗，請稍後再試。" });
@@ -198,15 +207,19 @@ const sendMessage = async () => {
   if (!inputText.value.trim()) return;
   const userMessage = inputText.value;
   inputText.value = "";
-  props.messages.push({ role: "user", text: userMessage });
+  appendMessage({ role: "user", text: userMessage });
 
-  const res = await axios.post("http://localhost:5000/gpt/ask", {
-    message: userMessage,
-    user_id: "test_user",
-  });
-  const botReply = res.data.reply;
-  props.messages.push({ role: "bot", text: botReply });
-  await speak(botReply);
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/ask", {
+      message: userMessage,
+      user_id: "test_user",
+    });
+    const botReply = res.data.reply;
+    appendMessage({ role: "bot", text: botReply });
+    await speak(botReply);
+  } catch (err) {
+    props.messages.push({ role: "bot", text: "發生錯誤，請稍後再試。" });
+  }
 };
 
 const speak = async (text) => {
@@ -226,8 +239,6 @@ const speak = async (text) => {
 };
 
 const isRecording = ref(false);
-let mediaRecorder = null;
-let audioChunks = [];
 
 let audioContext, source, processor, audioData;
 
@@ -259,7 +270,6 @@ const toggleRecording = async () => {
     source.connect(processor);
     processor.connect(audioContext.destination);
     isRecording.value = true;
-
   } catch (err) {
     console.error("無法開始錄音", err);
   }
@@ -278,26 +288,39 @@ function encodeWAV(buffers, sampleRate) {
 
   let offset = 0;
 
-  writeString(view, offset, "RIFF"); offset += 4;
-  view.setUint32(offset, 36 + length * 2, true); offset += 4;
-  writeString(view, offset, "WAVE"); offset += 4;
-  writeString(view, offset, "fmt "); offset += 4;
-  view.setUint32(offset, 16, true); offset += 4;
-  view.setUint16(offset, 1, true); offset += 2;
-  view.setUint16(offset, 1, true); offset += 2;
-  view.setUint32(offset, sampleRate, true); offset += 4;
-  view.setUint32(offset, sampleRate * 2, true); offset += 4;
-  view.setUint16(offset, 2, true); offset += 2;
-  view.setUint16(offset, 16, true); offset += 2;
-  writeString(view, offset, "data"); offset += 4;
-  view.setUint32(offset, length * 2, true); offset += 4;
+  writeString(view, offset, "RIFF");
+  offset += 4;
+  view.setUint32(offset, 36 + length * 2, true);
+  offset += 4;
+  writeString(view, offset, "WAVE");
+  offset += 4;
+  writeString(view, offset, "fmt ");
+  offset += 4;
+  view.setUint32(offset, 16, true);
+  offset += 4;
+  view.setUint16(offset, 1, true);
+  offset += 2;
+  view.setUint16(offset, 1, true);
+  offset += 2;
+  view.setUint32(offset, sampleRate, true);
+  offset += 4;
+  view.setUint32(offset, sampleRate * 2, true);
+  offset += 4;
+  view.setUint16(offset, 2, true);
+  offset += 2;
+  view.setUint16(offset, 16, true);
+  offset += 2;
+  writeString(view, offset, "data");
+  offset += 4;
+  view.setUint32(offset, length * 2, true);
+  offset += 4;
 
   let pos = offset;
   for (let i = 0; i < buffers.length; i++) {
     const buffer = buffers[i];
     for (let j = 0; j < buffer.length; j++, pos += 2) {
       const s = Math.max(-1, Math.min(1, buffer[j]));
-      view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7fff, true);
     }
   }
 
@@ -313,6 +336,7 @@ async function uploadAndSend(blob) {
     const sttRes = await axios.post("http://localhost:5000/routes/stt", {
       filename,
     });
+    appendMessage({ role: "user", text: sttRes.data.transcript });
     const filepath = sttRes.data.file;
 
     const gptRes = await axios.post("http://localhost:5000/gpt/ask_from_stt", {
@@ -321,27 +345,15 @@ async function uploadAndSend(blob) {
     });
 
     const botReply = gptRes.data.reply;
-    props.messages.push({ role: "user", text: sttRes.data.transcript });
+    
     props.messages.push({ role: "bot", text: botReply.reply });
     console.log("語音回覆內容：", botReply);
     await speak(botReply.reply); // 🟢 只取出文字回應
-
   } catch (err) {
     console.error("語音處理錯誤", err);
   }
 }
 
-//不要動這個位置
-watch(
-  () => props.initialText,
-  (newText) => {
-    if (newText?.trim()) {
-      inputText.value = newText;
-      sendMessage();
-    }
-  },
-  { immediate: true }
-);
 </script>
 
 <style scoped>
