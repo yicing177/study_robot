@@ -4,18 +4,19 @@
       <Robot />
     </div>
     <div class="chat_right_container">
-      <chat_right :initialText="initialText" :initialMessages="quizStarter" />
+      <chat_right :initialText="initialText" :messages="messages" @updateMessages="addMessage"/>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, computed } from "vue";
 import Robot from "@/components/Robot.vue";
 import chat_right from "@/components/chat_right.vue";
 import { useRoute } from "vue-router";
-import { computed } from "vue";
 
 const route = useRoute();
+const messages = ref([]); // ✅ 新增這個
 const initialText = computed(() => route.query.init || "");
 const quizStarter = [
   { role: "bot", text: "請問你想要什麼難度的測驗？" },
@@ -26,7 +27,10 @@ const quizStarter = [
     text: "",
   },
 ];
-
+const addMessage = (msg) => {
+  messages.value.push(msg);
+};
+messages.value.push(...quizStarter); // ✅ 初始訊息丟進 messages
 </script>
 
 <style scoped>

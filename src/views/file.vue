@@ -1,4 +1,6 @@
 <template>
+  <Function v-if="!showChatRight" />
+  <Music v-if="!showChatRight" />
   <div :class="['file_container', { chat_mode: showChatRight }]">
     <div
       :class="[
@@ -49,6 +51,11 @@
       <button @click="sendHighlight('examples')">更多例句</button>
     </div>
 
+    <div class="btn_container">
+      <button @click="showChatRight = !showChatRight" class="toggle_btn">
+        {{ showChatRight ? "▶" : "◀" }}
+      </button>
+    </div>
     <div v-if="showChatRight" class="chat_right_panel">
       <!--ChatRight呼叫emit(updateMessages)時，也會觸發file的addMessage-->
       <ChatRight
@@ -60,6 +67,7 @@
     <div v-if="!showChatRight" class="chat_bottom">
       <ChatBottom
         :messages="messages"
+        @show="chatRightOpen"
         @updateMessages="addMessage"
         @sendWithText="handleSendWithText"
         v-if="!showChatRight"
@@ -74,6 +82,8 @@ import { VuePdf, createLoadingTask } from "vue3-pdfjs";
 import { ref, onMounted, watch, computed, onUnmounted } from "vue";
 import ChatBottom from "../components/chat_bottom.vue";
 import ChatRight from "@/components/chat_right.vue";
+import Function from "@/components/function.vue";
+import Music from "../components/music.vue";
 import axios from "axios";
 
 const route = useRoute();
@@ -89,7 +99,7 @@ const showChatRight = ref(false);
 const initialRightInput = ref("");
 
 const addMessage = (msg) => {
-  messages.value.push({ role: "user", text: msg });
+  messages.value.push(msg); // 不用再加 { role: ..., text: ... }，因為子元件已經是處理好的物件
 };
 
 const props = defineProps({
@@ -123,13 +133,15 @@ watch(
   },
   { immediate: true }
 );
-
+const chatRightOpen = () => {
+  showChatRight.value = true;
+};
 const handleSendWithText = async (text) => {
   initialRightInput.value = text;
   showChatRight.value = true;
 
-  //把訊息加入陣列當中
-  messages.value.push({ role: "user", text });
+  /*把訊息加入陣列當中
+  messages.value.push({ role: "user", text: text }); */
 
   try {
     const res = await axios.post("http://localhost:5000/gpt/ask", {
@@ -226,23 +238,30 @@ const sendHighlight = async (action) => {
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: all 0.4s ease;
 }
 .preview_panel.leftAlign {
   width: 60%;
   display: flex;
   justify-items: center;
+  transition: all 0.4s ease;
 }
 .preview_panel.noRightChat {
   margin-bottom: 5%;
 }
-
+.btn_container {
+  display: flex;
+  align-items: center;
+}
 .chat_right_panel {
   width: 40%;
   background-color: #e1d8d2;
   overflow-y: auto;
 }
-
+.toggle_btn {
+  height: 10%;
+  background-color: #dfd5ce;
+  border: 0px;
+}
 .chat_bottom {
   position: absolute;
   bottom: 0;
@@ -317,5 +336,4 @@ const sendHighlight = async (action) => {
   gap: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
-
 </style>

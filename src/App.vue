@@ -9,7 +9,7 @@ import FloatingBottom from '@/components/floating_bottom.vue';
 
 <template>
   <div class="button">
-    <Function v-if="route.path !== '/login' && route.path !== '/register'"/>
+    <Function v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/file'"/>
     <Return v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/' && route.path !== '/file' "/>
     <Music v-if="route.path !== '/login' && route.path !== '/quiz' && route.path !== '/register' && route.path !== '/myBook' && route.path !== '/calendar' && route.path !== '/file'" />
   </div>
