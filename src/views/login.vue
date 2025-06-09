@@ -38,6 +38,7 @@
 import { auth, db } from "@/firebase/firebase"; // 引入 Firebase 認證與 Firestore
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore"; // Firestore 函式
+import axios from 'axios'
 
 export default {
   data() {
@@ -58,8 +59,14 @@ export default {
         console.log("登入成功:", userCredential.user);
 
         // 存入 localStorage
-        localStorage.setItem("token", userCredential.user.accessToken);
         localStorage.setItem("uid", userCredential.user.uid);
+        const token = await userCredential.user.getIdToken();
+        localStorage.setItem("token", token);
+        axios.defaults.headers.common["Authorization"] = token;
+        console.log("登入資訊：", userCredential);
+        console.log("目前 token：", localStorage.getItem("token"));
+
+        window.location.href = "/"; // ✅ 強制刷新頁面，讓 token 生效
 
         // 儲存登入資訊到 Firestore
         const userData = {

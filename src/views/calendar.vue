@@ -51,7 +51,6 @@ export default defineComponent({
       if(!title) return;// ← 沒輸入就跳出
       //let calendarApi = selectInfo.view.calendar;
       //calendarApi.unselect(); // clear date selection
-
       const payload = {
         title,
         user_id: localStorage.getItem("uid"),  // or 你用的登入方式
@@ -63,7 +62,7 @@ export default defineComponent({
       console.log("送出的 payload:", payload);
     axios.post("http://localhost:5000/calendar", payload, {
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
       }
     })
       .then(res => {
@@ -118,7 +117,7 @@ export default defineComponent({
   this.calendarOptions.eventClick = this.handleEventClick;
   this.calendarOptions.eventsSet = this.handleEvents;
 
-  axios.get(`http://localhost:5000/calendar?user_id=${uid}`)
+  axios.get("http://localhost:5000/calendar")
     .then(res => {
       const events = res.data.map(e => ({
         id: e.calendar_id,
