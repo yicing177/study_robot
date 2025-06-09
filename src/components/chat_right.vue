@@ -1,5 +1,10 @@
 <template>
   <div class="background">
+    <!-- 打包&新對話按鈕 -->
+    <div class="btn_group">
+      <button class="summary" @click="handleSummary">總結對話</button>
+      <button class="reset" @click="confirmReset">開新對話</button>
+    </div>
     <div class="chat_right_dialog" ref="dialogWrapper">
       <div
         v-for="(msg, i) in displayedMessages"
@@ -345,7 +350,7 @@ async function uploadAndSend(blob) {
     });
 
     const botReply = gptRes.data.reply;
-    
+
     props.messages.push({ role: "bot", text: botReply.reply });
     console.log("語音回覆內容：", botReply);
     await speak(botReply.reply); // 🟢 只取出文字回應
@@ -353,6 +358,56 @@ async function uploadAndSend(blob) {
     console.error("語音處理錯誤", err);
   }
 }
+
+const handleSummary = async () => {
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/summarize", {
+      user_id: "test_user",
+    });
+    const summaryText = res.data.summary;
+
+    const newItem = {
+      name: new Date().toLocaleDateString() + " 對話總結",
+      content: summaryText,
+      type: "text",
+    };
+
+    const existing = JSON.parse(localStorage.getItem("summaries") || "[]");
+    existing.unshift(newItem); // 新的放前面
+    localStorage.setItem("summaries", JSON.stringify(existing));
+
+    emit("updateMessages", { role: "bot", text: "✅ 已加入重點整理！" });
+
+  } catch (err) {
+    console.error("總結失敗", err);
+    emit("updateMessages", { role: "bot", text: "總結失敗，請稍後再試。" });
+  }
+};
+
+const confirmReset = async () => {
+  const wantsSummary = window.confirm(
+    "你想在開始新對話前，先總結目前的對話紀錄嗎？"
+  );
+
+  if (wantsSummary) {
+    await handleSummary(); // 呼叫總結函式
+  }
+
+  try {
+    await axios.post("http://localhost:5000/gpt/reset");
+    emit("updateMessages", { role: "bot", text: "🆕 已開啟新的對話！" });
+
+    // 這一段要通知父層清空 messages（額外 emit 一個事件）
+    emit("resetMessages");
+
+  } catch (err) {
+    console.error("開啟新對話失敗", err);
+    emit("updateMessages", {
+      role: "bot",
+      text: "開啟新對話失敗，請稍後再試。",
+    });
+  }
+};
 
 </script>
 
@@ -366,7 +421,23 @@ async function uploadAndSend(blob) {
   justify-content: flex-end;
   align-items: center;
 }
-
+.btn_group {
+  position: absolute;
+  top: 20px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  width: 30%;
+  gap: 10%;
+}
+.summary,
+.reset {
+  width: 40%;
+  background-color: #c9b8ac;
+  border: 0px;
+  border-radius: 10px;
+  height: 30px;
+}
 .chat_right_dialog {
   position: relative;
   width: 85%;
@@ -377,7 +448,8 @@ async function uploadAndSend(blob) {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  bottom: 10px;
+  margin-bottom: 0px;
+  margin-top: 65px;
 }
 
 .bubble {
@@ -393,7 +465,7 @@ async function uploadAndSend(blob) {
   align-self: flex-end;
 }
 .bubble.bot {
-  background-color: #c1b1a6;
+  background-color: #fffdfc9f;
   align-self: flex-start;
 }
 .difficulty_button {
