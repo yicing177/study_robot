@@ -9,14 +9,22 @@
       ]"
     >
       <div class="file">
+        <!-- 顯示文字筆記（summary 模式） -->
+        <div v-if="isSummaryMode" class="summary_display">
+          <h2>{{ summaryTitle }}</h2>
+          <div class="summary_content">{{ summaryContent }}</div>
+        </div>
         <div
-          v-if="fileType && fileType.startsWith('image')"
+          v-if="!isSummaryMode && fileType && fileType.startsWith('image')"
           class="image_container"
         >
           <img :src="fileURL" alt="Uploaded Image" class="image" />
         </div>
 
-        <div v-else-if="fileType === 'application/pdf'" class="pdf_container">
+        <div
+          v-else-if="!isSummaryMode && fileType === 'application/pdf'"
+          class="pdf_container"
+        >
           <div class="pdf_wrapper">
             <VuePdf
               :key="currentPages"
@@ -35,7 +43,7 @@
           </div>
         </div>
 
-        <div v-else>
+        <div v-else-if="!isSummaryMode">
           <p>無法預覽此類型的檔案，請下載查看。</p>
           <a :href="fileURL" download>下載檔案</a>
         </div>
@@ -59,13 +67,16 @@
     <div v-if="showChatRight" class="chat_right_panel">
       <!--ChatRight呼叫emit(updateMessages)時，也會觸發file的addMessage-->
       <ChatRight
+        :key="chatKey"
         :initialText="initialRightInput"
         :messages="messages"
         @updateMessages="addMessage"
+        @resetMessages="resetMessages"
       />
     </div>
     <div v-if="!showChatRight" class="chat_bottom">
       <ChatBottom
+        :key="chatKey"
         :messages="messages"
         @show="chatRightOpen"
         @updateMessages="addMessage"
@@ -133,6 +144,10 @@ watch(
   },
   { immediate: true }
 );
+const isSummaryMode = computed(() => route.query.type === "summary");
+const summaryTitle = computed(() => route.query.title || "重點整理");
+const summaryContent = computed(() => route.query.content || "（無內容）");
+
 const chatRightOpen = () => {
   showChatRight.value = true;
 };
@@ -230,6 +245,12 @@ const sendHighlight = async (action) => {
     console.error("highlight_action 發生錯誤", err);
   }
 };
+
+const chatKey = ref(0); // 每次改變會強制重新渲染 ChatRight/ChatBottom
+
+const resetMessages = () => {
+  messages.value = []; // ✅ 這樣就能清空對話畫面
+};
 </script>
 
 <style scoped>
@@ -287,6 +308,27 @@ const sendHighlight = async (action) => {
   align-items: center;
   background-color: #dfd5ce;
 }
+.summary_display {
+  padding: 20px;
+  background-color: #fdfdfd;
+  border-radius: 10px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.1);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  overflow-y: auto;
+  width: 100%;
+  height: 400px;
+}
+
+.summary_display h2 {
+  font-size: 1.25rem;
+  margin-bottom: 10px;
+}
+
+.summary_content {
+  font-size: 1rem;
+}
+
 .image_container {
   display: flex;
   flex-direction: column;

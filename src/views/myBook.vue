@@ -66,17 +66,16 @@ const bookRows = computed(() => {
   return rows;
 });
 
-
 onMounted(() => {
   const saved = JSON.parse(localStorage.getItem("uploadedFiles"));
   if (Array.isArray(saved)) {
     uploadedFiles.value = saved;
   }
-  summaries.value = [
-    { name: "4/10 文法整理", url: "", type: "text" },
-    { name: "4/11 單字筆記", url: "", type: "text" },
-    // 模擬的重點整理資料
-  ];
+
+  const savedSummaries = JSON.parse(localStorage.getItem("summaries"));
+  if (Array.isArray(savedSummaries)) {
+    summaries.value = savedSummaries;
+  }
 });
 
 //切換顯示的書架
@@ -85,11 +84,23 @@ const switchShelf = (shelfName) => {
 };
 
 const viewFile = (book) => {
-  const fileURL = book.file_url //|| book.file; // 替換成你實際存的欄位
+  if (currentShelf.value === "summary") {
+    // 🔥 是 summary 模式，就帶參數跳轉
+    router.push({
+      path: "/file",
+      query: {
+        type: "summary",
+        title: book.name,
+        content: book.content,
+      },
+    });
+    return;
+  }
+  const fileURL = book.file_url; //|| book.file; // 替換成你實際存的欄位
   const fileType = book.type || "application/pdf";
-  
+
   if (!fileURL) {
-    console.error(' 找不到文件 URL');
+    console.error(" 找不到文件 URL");
     return;
   }
 
@@ -101,10 +112,9 @@ const viewFile = (book) => {
         type: fileType,
       },
     });
-  } else{
-    console.error("不能獨文件 url")
+  } else {
+    console.error("不能獨文件 url");
   }
-
 };
 </script>
 
