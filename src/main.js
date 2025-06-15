@@ -16,6 +16,7 @@ axios.interceptors.response.use(//可以讓系統更穩健，如果 token 過期
     if (err.response && err.response.status === 401) {
       alert("請重新登入");
       localStorage.removeItem("token");
+      
       window.location.href = "/login"; // 換成你的登入頁
     }
     return Promise.reject(err);
