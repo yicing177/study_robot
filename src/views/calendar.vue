@@ -117,6 +117,11 @@ export default defineComponent({
   this.calendarOptions.eventClick = this.handleEventClick;
   this.calendarOptions.eventsSet = this.handleEvents;
 
+
+axios.get("http://localhost:5000/calendar")
+  .then(res => console.log("✅ 成功回傳：", res.data))
+  .catch(err => console.error("❌ 錯誤：", err.response.data));
+
   axios.get("http://localhost:5000/calendar")
     .then(res => {
       const events = res.data.map(e => ({
