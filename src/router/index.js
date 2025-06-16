@@ -6,7 +6,6 @@ import calendar from "../views/calendar.vue";
 import myBook from "../views/myBook.vue";
 import quiz from "../views/quiz.vue";
 import file from "../views/file.vue";
-import ttsTest from "../views/ttsTest.vue";
 import Robot from "@/components/robot.vue";
 import chat_bottom from "@/components/chat_bottom.vue";
 
@@ -30,10 +29,6 @@ const routes = [
     component: file,
     meta: { requiresAuth: true }
    },
-  { path: "/ttsTest", 
-    component: ttsTest,
-    meta: { requiresAuth: true }
-  },
 ];
 
 

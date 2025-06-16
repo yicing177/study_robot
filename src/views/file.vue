@@ -1,4 +1,6 @@
 <template>
+  <Function v-if="!showChatRight" />
+  <Music v-if="!showChatRight" />
   <div :class="['file_container', { chat_mode: showChatRight }]">
     <div
       :class="[
@@ -7,14 +9,22 @@
       ]"
     >
       <div class="file">
+        <!-- 顯示文字筆記（summary 模式） -->
+        <div v-if="isSummaryMode" class="summary_display">
+          <h2>{{ summaryTitle }}</h2>
+          <div class="summary_content">{{ summaryContent }}</div>
+        </div>
         <div
-          v-if="fileType && fileType.startsWith('image')"
+          v-if="!isSummaryMode && fileType && fileType.startsWith('image')"
           class="image_container"
         >
           <img :src="fileURL" alt="Uploaded Image" class="image" />
         </div>
 
-        <div v-else-if="fileType === 'application/pdf'" class="pdf_container">
+        <div
+          v-else-if="!isSummaryMode && fileType === 'application/pdf'"
+          class="pdf_container"
+        >
           <div class="pdf_wrapper">
             <VuePdf
               :key="currentPages"
@@ -33,24 +43,42 @@
           </div>
         </div>
 
-        <div v-else>
+        <div v-else-if="!isSummaryMode">
           <p>無法預覽此類型的檔案，請下載查看。</p>
           <a :href="fileURL" download>下載檔案</a>
         </div>
       </div>
     </div>
+    <div
+      v-if="selectedText"
+      class="highlight_options"
+      :style="`top: ${highlightPosition.y}px; left: ${highlightPosition.x}px;`"
+    >
+      <button @click="sendHighlight('read')">朗讀</button>
+      <button @click="sendHighlight('translate')">翻譯</button>
+      <button @click="sendHighlight('examples')">更多例句</button>
+    </div>
 
+    <div class="btn_container">
+      <button @click="showChatRight = !showChatRight" class="toggle_btn">
+        {{ showChatRight ? "▶" : "◀" }}
+      </button>
+    </div>
     <div v-if="showChatRight" class="chat_right_panel">
-    <!--ChatRight呼叫emit(updateMessages)時，也會觸發file的addMessage-->
+      <!--ChatRight呼叫emit(updateMessages)時，也會觸發file的addMessage-->
       <ChatRight
+        :key="chatKey"
         :initialText="initialRightInput"
         :messages="messages"
         @updateMessages="addMessage"
+        @resetMessages="resetMessages"
       />
     </div>
     <div v-if="!showChatRight" class="chat_bottom">
       <ChatBottom
+        :key="chatKey"
         :messages="messages"
+        @show="chatRightOpen"
         @updateMessages="addMessage"
         @sendWithText="handleSendWithText"
         v-if="!showChatRight"
@@ -62,9 +90,11 @@
 <script setup>
 import { useRoute } from "vue-router";
 import { VuePdf, createLoadingTask } from "vue3-pdfjs";
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, watch, computed, onUnmounted } from "vue";
 import ChatBottom from "../components/chat_bottom.vue";
 import ChatRight from "@/components/chat_right.vue";
+import Function from "@/components/function.vue";
+import Music from "../components/music.vue";
 import axios from "axios";
 
 const route = useRoute();
@@ -80,7 +110,7 @@ const showChatRight = ref(false);
 const initialRightInput = ref("");
 
 const addMessage = (msg) => {
-  messages.value.push({ role: "user", text: msg });
+  messages.value.push(msg); // 不用再加 { role: ..., text: ... }，因為子元件已經是處理好的物件
 };
 
 const props = defineProps({
@@ -114,13 +144,19 @@ watch(
   },
   { immediate: true }
 );
+const isSummaryMode = computed(() => route.query.type === "summary");
+const summaryTitle = computed(() => route.query.title || "重點整理");
+const summaryContent = computed(() => route.query.content || "（無內容）");
 
+const chatRightOpen = () => {
+  showChatRight.value = true;
+};
 const handleSendWithText = async (text) => {
   initialRightInput.value = text;
   showChatRight.value = true;
 
-  //把訊息加入陣列當中
-  messages.value.push({ role: "user", text }); 
+  /*把訊息加入陣列當中
+  messages.value.push({ role: "user", text: text }); */
 
   try {
     const res = await axios.post("http://localhost:5000/gpt/ask", {
@@ -148,6 +184,73 @@ const nextPage = () => {
   }
 };
 
+//反白
+const selectedText = ref("");
+
+const handleSelection = () => {
+  const selection = window.getSelection();
+  const text = selection.toString().trim();
+
+  if (text.length > 0) {
+    selectedText.value = text;
+
+    // 取得選取文字的範圍座標
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+
+    // 記錄座標（加上捲動量 offset）
+    highlightPosition.value = {
+      x: rect.left + window.scrollX,
+      y: rect.bottom + window.scrollX,
+    };
+  } else {
+    selectedText.value = "";
+  }
+};
+
+onMounted(() => {
+  window.addEventListener("mouseup", handleSelection);
+});
+onUnmounted(() => {
+  window.removeEventListener("mouseup", handleSelection);
+});
+
+const highlightPosition = ref({ x: 0, y: 0 });
+const sendHighlight = async (action) => {
+  if (!selectedText.value) return;
+
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/highlight_action", {
+      user_id: "test_user",
+      text: selectedText.value,
+      action: action,
+    });
+
+    if (action === "read" && res.data.tts_url) {
+      const audio = new Audio(`http://localhost:5000${res.data.tts_url}`);
+      audio.play();
+    } else if (action === "translate" && res.data.reply) {
+      const sendMsg = "請幫我翻譯 " + selectedText.value;
+      messages.value.push({ role: "user", text: sendMsg });
+      showChatRight.value = true;
+      messages.value.push({ role: "bot", text: res.data.reply });
+    } else if (action === "examples" && res.data.reply) {
+      const sendMsg = "我想知道 " + selectedText.value + " 的更多例句";
+      messages.value.push({ role: "user", text: sendMsg });
+      showChatRight.value = true;
+      messages.value.push({ role: "bot", text: res.data.reply });
+    }
+    selectedText.value = "";
+  } catch (err) {
+    console.error("highlight_action 發生錯誤", err);
+  }
+};
+
+const chatKey = ref(0); // 每次改變會強制重新渲染 ChatRight/ChatBottom
+
+const resetMessages = () => {
+  messages.value = []; // ✅ 這樣就能清空對話畫面
+};
 </script>
 
 <style scoped>
@@ -156,23 +259,30 @@ const nextPage = () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: all 0.4s ease;
 }
 .preview_panel.leftAlign {
   width: 60%;
   display: flex;
   justify-items: center;
+  transition: all 0.4s ease;
 }
 .preview_panel.noRightChat {
   margin-bottom: 5%;
 }
-
+.btn_container {
+  display: flex;
+  align-items: center;
+}
 .chat_right_panel {
   width: 40%;
   background-color: #e1d8d2;
   overflow-y: auto;
 }
-
+.toggle_btn {
+  height: 10%;
+  background-color: #dfd5ce;
+  border: 0px;
+}
 .chat_bottom {
   position: absolute;
   bottom: 0;
@@ -198,6 +308,27 @@ const nextPage = () => {
   align-items: center;
   background-color: #dfd5ce;
 }
+.summary_display {
+  padding: 20px;
+  background-color: #fdfdfd;
+  border-radius: 10px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.1);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  overflow-y: auto;
+  width: 100%;
+  height: 400px;
+}
+
+.summary_display h2 {
+  font-size: 1.25rem;
+  margin-bottom: 10px;
+}
+
+.summary_content {
+  font-size: 1rem;
+}
+
 .image_container {
   display: flex;
   flex-direction: column;
@@ -235,5 +366,16 @@ const nextPage = () => {
 .last_btn,
 .next_btn {
   height: 30px;
+}
+.highlight_options {
+  position: absolute;
+  background: #fffbe8;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px 10px;
+  z-index: 999;
+  display: flex;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 </style>

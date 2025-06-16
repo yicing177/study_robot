@@ -1,7 +1,16 @@
 <template>
   <div class="background">
+    <!-- 打包&新對話按鈕 -->
+    <div class="btn_group">
+      <button class="summary" @click="handleSummary">總結對話</button>
+      <button class="reset" @click="confirmReset">開新對話</button>
+    </div>
     <div class="chat_right_dialog" ref="dialogWrapper">
-      <div v-for="(msg, i) in messages" :key="i" :class="['bubble', msg.role]">
+      <div
+        v-for="(msg, i) in displayedMessages"
+        :key="i"
+        :class="['bubble', msg.role]"
+      >
         <!-- 顯示訊息 -->
         <template v-if="!msg.type || msg.type === 'text'">
           {{ msg.text }}
@@ -82,11 +91,7 @@
         @keydown.enter="sendMessage"
       />
       <div class="voice_btn" @click="toggleRecording">
-        <img
-          src="../assets/logo/voice.svg"
-          width="40"
-          height="40"
-        />
+        <img src="../assets/logo/voice.svg" width="40" height="40" />
       </div>
       <div class="send_btn" @click="sendMessage">
         <img src="../assets/logo/send.svg" width="40" height="40" />
@@ -96,12 +101,11 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, nextTick } from "vue";
+import { onMounted, ref, watch, computed } from "vue";
 import axios from "axios";
 import Upload from "@/components/upload.vue";
 
 const inputText = ref("");
-const messages = ref([]);
 const emit = defineEmits(["updateMessages", "sendWithText"]);
 const props = defineProps({
   initialText: String,
@@ -109,7 +113,26 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  messages: {
+    type: Array,
+    required: true, // ✅ 改為必填，避免 fallback 到空陣列
+  },
 });
+
+//處理本地對話
+const localMessages = ref([]);
+const isUsingLocal = computed(() => !props.messages);
+const displayedMessages = computed(() =>
+  isUsingLocal.value ? localMessages.value : props.messages
+);
+function appendMessage(message) {
+  if (props.messages) {
+    emit("updateMessages", message); // 傳給父層
+  } else {
+    localMessages.value.push(message); // 自己管
+  }
+}
+
 const dialogWrapper = ref(null);
 const selectedDifficulty = ref(null);
 const quizCount = ref("");
@@ -117,28 +140,17 @@ const userAnswers = ref({});
 const quizQuestions = ref([]);
 const quizSubmitted = ref(false);
 
-onMounted(() => {
-  messages.value.push(...props.initialMessages);
-});
-
-watch(messages, async () => {
-  await nextTick();
-  if (dialogWrapper.value) {
-    dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
-  }
-});
-
 const selectDifficulty = (level) => {
   selectedDifficulty.value = level;
-  messages.value.push({ role: "user", text: `我要選擇 ${level} 難度` });
-  messages.value.push({ role: "bot", type: "input", text: "你想要幾題？" });
+  props.messages.push({ role: "user", text: `我要選擇 ${level} 難度` });
+  props.messages.push({ role: "bot", type: "input", text: "你想要幾題？" });
 };
 
 const submitQuizCount = async () => {
   const num = parseInt(quizCount.value);
   if (!num || !selectedDifficulty.value) return;
 
-  messages.value.push({ role: "user", text: `我想要 ${num} 題` });
+  props.messages.push({ role: "user", text: `我想要 ${num} 題` });
 
   try {
     const res = await axios.post("http://localhost:5000/quiz/generate_quiz", {
@@ -146,11 +158,11 @@ const submitQuizCount = async () => {
       num_questions: num,
     });
 
-    const quiz = res.data.quiz;
+    const quiz = res.data.quiz; // ✅ 這邊定義 quiz
     quizQuestions.value = quiz;
 
     quiz.forEach((q, idx) => {
-      messages.value.push({
+      appendMessage({
         role: "bot",
         type: "quiz",
         index: idx,
@@ -158,10 +170,11 @@ const submitQuizCount = async () => {
         options: q.options,
       });
     });
-
+    console.log("✅ 從後端取得題目：", quiz);
+    console.log("📥 現在的 displayedMessages：", displayedMessages.value);
     quizSubmitted.value = false;
   } catch (err) {
-    messages.value.push({ role: "bot", text: "出題失敗，請稍後再試。" });
+    props.messages.push({ role: "bot", text: "出題失敗，請稍後再試。" });
   }
 };
 
@@ -175,13 +188,13 @@ const submitAnswers = async () => {
     });
 
     const result = res.data;
-    messages.value.push({
+    props.messages.push({
       role: "bot",
       text: `✅ 你得了 ${result.score} / ${result.total} 分！`,
     });
 
     result.details.forEach((d, i) => {
-      messages.value.push({
+      props.messages.push({
         role: "bot",
         text: `第 ${i + 1} 題：你答 ${d.user_answer}，正解是 ${
           d.correct_answer
@@ -191,7 +204,7 @@ const submitAnswers = async () => {
 
     quizSubmitted.value = true;
   } catch (err) {
-    messages.value.push({ role: "bot", text: "提交失敗，請稍後再試一次。" });
+    props.messages.push({ role: "bot", text: "提交失敗，請稍後再試一次。" });
   }
 };
 
@@ -199,15 +212,19 @@ const sendMessage = async () => {
   if (!inputText.value.trim()) return;
   const userMessage = inputText.value;
   inputText.value = "";
-  messages.value.push({ role: "user", text: userMessage });
+  appendMessage({ role: "user", text: userMessage });
 
-  const res = await axios.post("http://localhost:5000/gpt/ask", {
-    message: userMessage,
-    user_id: "test_user",
-  });
-  const botReply = res.data.reply;
-  messages.value.push({ role: "bot", text: botReply });
-  await speak(botReply);
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/ask", {
+      message: userMessage,
+      user_id: "test_user",
+    });
+    const botReply = res.data.reply;
+    appendMessage({ role: "bot", text: botReply });
+    await speak(botReply);
+  } catch (err) {
+    props.messages.push({ role: "bot", text: "發生錯誤，請稍後再試。" });
+  }
 };
 
 const speak = async (text) => {
@@ -227,8 +244,6 @@ const speak = async (text) => {
 };
 
 const isRecording = ref(false);
-let mediaRecorder = null;
-let audioChunks = [];
 
 let audioContext, source, processor, audioData;
 
@@ -260,7 +275,6 @@ const toggleRecording = async () => {
     source.connect(processor);
     processor.connect(audioContext.destination);
     isRecording.value = true;
-
   } catch (err) {
     console.error("無法開始錄音", err);
   }
@@ -279,26 +293,39 @@ function encodeWAV(buffers, sampleRate) {
 
   let offset = 0;
 
-  writeString(view, offset, "RIFF"); offset += 4;
-  view.setUint32(offset, 36 + length * 2, true); offset += 4;
-  writeString(view, offset, "WAVE"); offset += 4;
-  writeString(view, offset, "fmt "); offset += 4;
-  view.setUint32(offset, 16, true); offset += 4;
-  view.setUint16(offset, 1, true); offset += 2;
-  view.setUint16(offset, 1, true); offset += 2;
-  view.setUint32(offset, sampleRate, true); offset += 4;
-  view.setUint32(offset, sampleRate * 2, true); offset += 4;
-  view.setUint16(offset, 2, true); offset += 2;
-  view.setUint16(offset, 16, true); offset += 2;
-  writeString(view, offset, "data"); offset += 4;
-  view.setUint32(offset, length * 2, true); offset += 4;
+  writeString(view, offset, "RIFF");
+  offset += 4;
+  view.setUint32(offset, 36 + length * 2, true);
+  offset += 4;
+  writeString(view, offset, "WAVE");
+  offset += 4;
+  writeString(view, offset, "fmt ");
+  offset += 4;
+  view.setUint32(offset, 16, true);
+  offset += 4;
+  view.setUint16(offset, 1, true);
+  offset += 2;
+  view.setUint16(offset, 1, true);
+  offset += 2;
+  view.setUint32(offset, sampleRate, true);
+  offset += 4;
+  view.setUint32(offset, sampleRate * 2, true);
+  offset += 4;
+  view.setUint16(offset, 2, true);
+  offset += 2;
+  view.setUint16(offset, 16, true);
+  offset += 2;
+  writeString(view, offset, "data");
+  offset += 4;
+  view.setUint32(offset, length * 2, true);
+  offset += 4;
 
   let pos = offset;
   for (let i = 0; i < buffers.length; i++) {
     const buffer = buffers[i];
     for (let j = 0; j < buffer.length; j++, pos += 2) {
       const s = Math.max(-1, Math.min(1, buffer[j]));
-      view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7fff, true);
     }
   }
 
@@ -314,6 +341,7 @@ async function uploadAndSend(blob) {
     const sttRes = await axios.post("http://localhost:5000/routes/stt", {
       filename,
     });
+    appendMessage({ role: "user", text: sttRes.data.transcript });
     const filepath = sttRes.data.file;
 
     const gptRes = await axios.post("http://localhost:5000/gpt/ask_from_stt", {
@@ -322,27 +350,65 @@ async function uploadAndSend(blob) {
     });
 
     const botReply = gptRes.data.reply;
-    messages.value.push({ role: "user", text: sttRes.data.transcript });
-    messages.value.push({ role: "bot", text: botReply.reply });
+
+    props.messages.push({ role: "bot", text: botReply.reply });
     console.log("語音回覆內容：", botReply);
     await speak(botReply.reply); // 🟢 只取出文字回應
-
   } catch (err) {
     console.error("語音處理錯誤", err);
   }
 }
 
-//不要動這個位置
-watch(
-  () => props.initialText,
-  (newText) => {
-    if (newText?.trim()) {
-      inputText.value = newText;
-      sendMessage();
-    }
-  },
-  { immediate: true }
-);
+const handleSummary = async () => {
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/summarize", {
+      user_id: "test_user",
+    });
+    const summaryText = res.data.summary;
+
+    const newItem = {
+      name: new Date().toLocaleDateString() + " 對話總結",
+      content: summaryText,
+      type: "text",
+    };
+
+    const existing = JSON.parse(localStorage.getItem("summaries") || "[]");
+    existing.unshift(newItem); // 新的放前面
+    localStorage.setItem("summaries", JSON.stringify(existing));
+
+    emit("updateMessages", { role: "bot", text: "✅ 已加入重點整理！" });
+
+  } catch (err) {
+    console.error("總結失敗", err);
+    emit("updateMessages", { role: "bot", text: "總結失敗，請稍後再試。" });
+  }
+};
+
+const confirmReset = async () => {
+  const wantsSummary = window.confirm(
+    "你想在開始新對話前，先總結目前的對話紀錄嗎？"
+  );
+
+  if (wantsSummary) {
+    await handleSummary(); // 呼叫總結函式
+  }
+
+  try {
+    await axios.post("http://localhost:5000/gpt/reset");
+    emit("updateMessages", { role: "bot", text: "🆕 已開啟新的對話！" });
+
+    // 這一段要通知父層清空 messages（額外 emit 一個事件）
+    emit("resetMessages");
+
+  } catch (err) {
+    console.error("開啟新對話失敗", err);
+    emit("updateMessages", {
+      role: "bot",
+      text: "開啟新對話失敗，請稍後再試。",
+    });
+  }
+};
+
 </script>
 
 <style scoped>
@@ -355,7 +421,23 @@ watch(
   justify-content: flex-end;
   align-items: center;
 }
-
+.btn_group {
+  position: absolute;
+  top: 20px;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  width: 30%;
+  gap: 10%;
+}
+.summary,
+.reset {
+  width: 40%;
+  background-color: #c9b8ac;
+  border: 0px;
+  border-radius: 10px;
+  height: 30px;
+}
 .chat_right_dialog {
   position: relative;
   width: 85%;
@@ -366,7 +448,8 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 10px;
-  bottom: 10px;
+  margin-bottom: 0px;
+  margin-top: 65px;
 }
 
 .bubble {
@@ -382,7 +465,7 @@ watch(
   align-self: flex-end;
 }
 .bubble.bot {
-  background-color: #c1b1a6;
+  background-color: #fffdfc9f;
   align-self: flex-start;
 }
 .difficulty_button {

@@ -62,6 +62,7 @@ const inputText = ref(""); // 預設傳進 chat_bottom 的文字
 const messages = ref([]); // 所有訊息紀錄
 
 const addMessage = (msg) => {
+  console.log("✅ 收到訊息：", msg);
   messages.value.push(msg);
   isChatOpen.value = true;
 };
