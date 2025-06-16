@@ -71,6 +71,9 @@ onMounted(() => {
   opacity:0.8;
   transition: transform 0.6s ease, opacity 0.6s ease;
 }
+.floating-button:hover {
+  opacity: 70%;
+}
 
 .floating-button.animate {
   transform: scale(16);      /* 變大 */

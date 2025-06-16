@@ -377,7 +377,6 @@ const handleSummary = async () => {
     localStorage.setItem("summaries", JSON.stringify(existing));
 
     emit("updateMessages", { role: "bot", text: "✅ 已加入重點整理！" });
-
   } catch (err) {
     console.error("總結失敗", err);
     emit("updateMessages", { role: "bot", text: "總結失敗，請稍後再試。" });
@@ -399,7 +398,6 @@ const confirmReset = async () => {
 
     // 這一段要通知父層清空 messages（額外 emit 一個事件）
     emit("resetMessages");
-
   } catch (err) {
     console.error("開啟新對話失敗", err);
     emit("updateMessages", {
@@ -408,7 +406,6 @@ const confirmReset = async () => {
     });
   }
 };
-
 </script>
 
 <style scoped>
@@ -423,35 +420,58 @@ const confirmReset = async () => {
 }
 .btn_group {
   position: absolute;
-  top: 20px;
+  width: 100%;
   display: flex;
   flex-direction: row;
   justify-content: center;
-  width: 30%;
   gap: 10%;
+  background-color: #c9b8ac;
+  padding: 15px 0px;
+  top: 0px;
 }
 .summary,
 .reset {
   width: 40%;
-  background-color: #c9b8ac;
+  background-color: #ffffff;
   border: 0px;
   border-radius: 10px;
   height: 30px;
+  margin: 0px;
+}
+.summary:hover,
+.reset:hover {
+  background-color: #fffdfc9f;
 }
 .chat_right_dialog {
   position: relative;
-  width: 85%;
-  max-height: 80%;
+  width: 90%;
   overflow-y: auto;
-  padding: 10px 15px;
+  padding: 10px 20px;
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 0px;
-  margin-top: 65px;
+  margin-top: 60px;
+}
+/* 整條滾動軸 */
+.chat_right_dialog::-webkit-scrollbar {
+  width: 5px;  
 }
 
+/* 軌道（背景） */
+.chat_right_dialog::-webkit-scrollbar-track {
+  background: transparent;  
+  border-radius: 5px;
+}
+
+/* 捲軸滑塊 */
+.chat_right_dialog::-webkit-scrollbar-thumb {
+  background-color: #a4a4a4; 
+  border-radius: 10px;
+}
+.chat_right_dialog::-webkit-scrollbar-thumb:hover {
+  background-color: #636363;
+}
 .bubble {
   max-width: 80%;
   padding: 10px 14px;
@@ -476,24 +496,35 @@ const confirmReset = async () => {
   width: 150px;
   height: 35px;
   border-radius: 5px;
-  background-color: #5c4438;
-  color: white;
+  background-color: #c9b8ac;
+  color: black;
   justify-content: center;
+}
+.difficulty_button:hover {
+  background-color: #c9b8ac8e;
 }
 .num {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 10px;
 }
 .num_box {
   background-color: #dfd5ce;
-  height: 30px;
+  height: 25px;
+  border-color: #cabeb59d;
 }
-.num_btn {
-  background-color: #5c4438;
-  color: white;
+.num_btn,
+.submit_button {
+  background-color: #c9b8ac;
+  color: black;
   border: 0px;
-  width: 50px;
+  width: 30%;
+  padding: 3px;
+  border-radius: 5px;
+}
+.num_btn:hover,
+.submit_button:hover {
+  background-color: #c9b8ac8e;
 }
 .quiz-option {
   display: block;

@@ -23,7 +23,9 @@
         />
       </div>
       <div>
-        <button class="btn_forget_pwd" @click="handleResetPassword">Forget password</button>
+        <button class="btn_forget_pwd" @click="handleResetPassword">
+          Forget password
+        </button>
       </div>
       <div class="button">
         <button class="btn_singUp" @click="goToRegister">Sign Up</button>
@@ -39,7 +41,7 @@ import { auth, db } from "@/firebase/firebase"; // 引入 Firebase 認證與 Fir
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore"; // Firestore 函式
-import axios from 'axios'
+import axios from "axios";
 
 export default {
   data() {
@@ -76,7 +78,7 @@ export default {
         };
         const userRef = doc(db, "users", userCredential.user.uid); // 假設集合名稱為 `users`
         await setDoc(userRef, userData, { merge: true });
-      
+
         // 導向到主頁
         this.$router.push("/");
       } catch (error) {
@@ -85,18 +87,17 @@ export default {
       }
     },
     async handleResetPassword() {
-      if(!this.email){
+      if (!this.email) {
         alert("請先輸入email再按忘記密碼");
         return;
       }
       try {
         await sendPasswordResetEmail(auth, this.email);
         alert("重設密碼郵件已送，請查收信箱!");
-      }catch (error){
+      } catch (error) {
         console.error("寄送失敗:", error.message);
         alert("無法寄送密碼重設信");
       }
-
     },
     goToRegister() {
       this.$router.push("/register");
@@ -153,6 +154,10 @@ const navigateTo = (path) => {
   border: 0;
   background-color: transparent;
 }
+.btn_forget_pwd:hover{
+  background-color: #e8e1dc65;
+  border-radius: 5px;
+}
 .button {
   display: flex;
   flex-direction: row;
@@ -166,5 +171,9 @@ const navigateTo = (path) => {
   border-radius: 20px;
   padding: 10px 20px;
   background-color: #e8e1dc;
+}
+.btn_login:hover,
+.btn_singUp:hover {
+  background-color: #e8e1dc90;
 }
 </style>

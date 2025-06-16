@@ -73,16 +73,12 @@ const setInputText = (msg) => {
 
 const dialogWrapper = ref(null);
 
-watch(
-  [() => messages.value.length, () => isChatOpen.value],
-  async () => {
-    await nextTick();
-    if (dialogWrapper.value) {
-      dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
-    }
+watch([() => messages.value.length, () => isChatOpen.value], async () => {
+  await nextTick();
+  if (dialogWrapper.value) {
+    dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
   }
-);
-
+});
 
 import { useWebGazer } from "@/composables/useWebGazer";
 
@@ -108,13 +104,16 @@ const { isLooking, gazeX, gazeY } = useWebGazer(
   bottom: 46px; /* 根據 dialog_wrapper 高度微調 */
   right: 10%;
   transform: translateX(-50%);
-  background-color: #eee;
+  background-color: #ebe9e9;
   border: none;
   padding: 6px 12px;
   border-radius: 10px;
   font-size: 14px;
   cursor: pointer;
   z-index: 10;
+}
+.toggle_btn:hover{
+  background-color: #c9b8ac8e;
 }
 .container {
   position: relative;
@@ -174,6 +173,12 @@ const { isLooking, gazeX, gazeY } = useWebGazer(
   padding: 8px 20px;
   box-shadow: 2px 2px 7px rgb(174, 174, 174);
 }
+.d1:hover,
+.d2:hover,
+.d3:hover,
+.d4:hover {
+  background-color: #dacbc0;
+}
 .dialog_wrapper {
   position: absolute;
   bottom: 100px;
@@ -211,9 +216,7 @@ const { isLooking, gazeX, gazeY } = useWebGazer(
   border-radius: 50%;
   margin: 0 8px;
 }
-</style>
 
-<style scoped>
 .gazer-demo {
   padding: 2rem;
   font-family: sans-serif;
