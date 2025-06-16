@@ -23,7 +23,7 @@
         />
       </div>
       <div>
-        <button class="btn_forget_pwd">Forget password</button>
+        <button class="btn_forget_pwd" @click="handleResetPassword">Forget password</button>
       </div>
       <div class="button">
         <button class="btn_singUp" @click="goToRegister">Sign Up</button>
@@ -37,7 +37,9 @@
 //邱
 import { auth, db } from "@/firebase/firebase"; // 引入 Firebase 認證與 Firestore
 import { signInWithEmailAndPassword } from "firebase/auth";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore"; // Firestore 函式
+import axios from 'axios'
 
 export default {
   data() {
@@ -58,8 +60,14 @@ export default {
         console.log("登入成功:", userCredential.user);
 
         // 存入 localStorage
-        localStorage.setItem("token", userCredential.user.accessToken);
         localStorage.setItem("uid", userCredential.user.uid);
+        const token = await userCredential.user.getIdToken();
+        localStorage.setItem("token", token);
+        axios.defaults.headers.common["Authorization"] = token;
+        console.log("登入資訊：", userCredential);
+        console.log("目前 token：", localStorage.getItem("token"));
+
+        window.location.href = "/"; // ✅ 強制刷新頁面，讓 token 生效
 
         // 儲存登入資訊到 Firestore
         const userData = {
@@ -68,13 +76,27 @@ export default {
         };
         const userRef = doc(db, "users", userCredential.user.uid); // 假設集合名稱為 `users`
         await setDoc(userRef, userData, { merge: true });
-
+      
         // 導向到主頁
         this.$router.push("/");
       } catch (error) {
         console.error("登入失敗:", error.message);
         alert("登入失敗：" + error.message); // 顯示錯誤訊息
       }
+    },
+    async handleResetPassword() {
+      if(!this.email){
+        alert("請先輸入email再按忘記密碼");
+        return;
+      }
+      try {
+        await sendPasswordResetEmail(auth, this.email);
+        alert("重設密碼郵件已送，請查收信箱!");
+      }catch (error){
+        console.error("寄送失敗:", error.message);
+        alert("無法寄送密碼重設信");
+      }
+
     },
     goToRegister() {
       this.$router.push("/register");
