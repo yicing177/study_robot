@@ -274,6 +274,7 @@ const resetMessages = () => {
   align-items: center;
 }
 .chat_right_panel {
+  position: relative;
   width: 40%;
   background-color: #e1d8d2;
   overflow-y: auto;
@@ -282,6 +283,9 @@ const resetMessages = () => {
   height: 10%;
   background-color: #dfd5ce;
   border: 0px;
+}
+.toggle_btn:hover{
+  box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.3);
 }
 .chat_bottom {
   position: absolute;
@@ -312,7 +316,7 @@ const resetMessages = () => {
   padding: 20px;
   background-color: #fdfdfd;
   border-radius: 10px;
-  box-shadow: 0 0 6px rgba(0,0,0,0.1);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
   white-space: pre-wrap;
   line-height: 1.6;
   overflow-y: auto;
@@ -366,6 +370,13 @@ const resetMessages = () => {
 .last_btn,
 .next_btn {
   height: 30px;
+  border: 0px;
+  border-radius: 5px;
+  background-color: #f0ece9;
+}
+.last_btn:hover,
+.next_btn:hover{
+  box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.3);
 }
 .highlight_options {
   position: absolute;

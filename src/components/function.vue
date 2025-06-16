@@ -98,8 +98,23 @@ onUnmounted(() => {
   width: 100px;
 }
 .function_btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  position: absolute; /* 如果你是絕對定位用 left/top */
   left: 40px;
   top: 40px;
+  cursor: pointer;
+  transition: box-shadow 0.3s ease;
+  display: flex; /* 確保裡面的 img 水平垂直置中 */
+  align-items: center;
+  justify-content: center;
+}
+.function_btn:hover{
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3); /* 懸停時增加陰影 */
 }
 .quiz,
 .calendar,
@@ -109,4 +124,10 @@ onUnmounted(() => {
   justify-content: center;
   gap: 4px;
 }
+.calendar:hover,
+.folder:hover,
+.quiz:hover {
+  background-color: #e8e1dca2;
+}
+
 </style>

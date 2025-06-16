@@ -345,5 +345,6 @@ input[type="file"] {
   justify-content: center;
   border: 0;
   background-color: transparent;
+  border-radius: 50%;
 }
 </style>
