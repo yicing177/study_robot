@@ -118,4 +118,10 @@ export default {
   padding: 10px 20px;
   background-color: #e8e1dc;
 }
+
+.btn_return:hover,
+.btn_signUp:hover {
+  background-color: #e8e1dc90;
+}
+
 </style>

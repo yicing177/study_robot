@@ -54,6 +54,7 @@ messages.value.push(...quizStarter); // ✅ 初始訊息丟進 messages
   flex-direction: column;
   align-items: flex-end;
   height: 100vh;
+  position: relative;
 }
 .robot {
   width: 100%;
