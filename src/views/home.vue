@@ -40,17 +40,20 @@
       <button class="toggle_btn" @click="isChatOpen = !isChatOpen">
         {{ isChatOpen ? "▼ 收起對話框" : "▲ 展開對話框" }}
       </button>
+      <!-- Toast 訊息懸浮 -->
+      <div v-if="toastVisible" class="toast">{{ toastMessage }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 import Robot from "@/components/Robot.vue";
 import roomImage from "@/assets/image/room4.png";
 import chat_bottom from "../components/chat_bottom.vue";
 import botAvatar from "@/assets/image/avatar_bot.svg";
 import userAvatar from "@/assets/image/avatar_user.svg";
+
 
 const backgroundStyle = ref({
   backgroundImage: `url(${roomImage})`, // 使用導入的圖片路徑
@@ -61,8 +64,24 @@ const isChatOpen = ref(false);
 const inputText = ref(""); // 預設傳進 chat_bottom 的文字
 const messages = ref([]); // 所有訊息紀錄
 
+
+const toastMessage = ref("");
+const toastVisible = ref(false);
+
+const hasGreeted = ref(false);
+const gazeCheckEnabled = ref(false);
+
+
+function showToast(message, duration = 10000) {
+  toastMessage.value = message;
+  toastVisible.value = true;
+  setTimeout(() => {
+    toastVisible.value = false;
+  }, duration);
+}
+
 const addMessage = (msg) => {
-  console.log("✅ 收到訊息：", msg);
+  console.log("收到訊息：", msg);
   messages.value.push(msg);
   isChatOpen.value = true;
 };
@@ -89,13 +108,24 @@ const { isLooking, gazeX, gazeY } = useWebGazer(
   },
   () => {
     console.log("看不到你了");
-    alert("你是不是低頭了？讀書加油喔！");
+    showToast("你是不是低頭了？讀書加油喔！");
   },
   () => {
     console.log("抬頭啦");
-    alert("你回來啦～要我幫忙嗎？");
+    showToast("你回來啦～要我幫忙嗎？");
   }
 );
+// 畫面載入後先說幾句話，延後啟用 gaze 偵測
+onMounted(() => {
+  showToast("今天也一起加油吧！");
+  setTimeout(() => {
+    showToast("有我陪你一起讀書喔！");
+  }, 3500);
+  setTimeout(() => {
+    showToast("需要幫忙隨時跟我說～");
+    gazeCheckEnabled.value = true; // 👈 在這之後才啟用眼神判斷
+  }, 7000);
+});
 </script>
 
 <style scoped>
@@ -221,4 +251,53 @@ const { isLooking, gazeX, gazeY } = useWebGazer(
   padding: 2rem;
   font-family: sans-serif;
 }
+
+/*關心對話筐*/
+.toast {
+  position: fixed;
+  top: 120px;
+  left: 51%;
+  transform: translateX(-50%);
+  background: #fff;
+  background: rgba(255, 255, 255, 0.85); /* 半透明白底 */
+  backdrop-filter: blur(4px); /* 加一點霧化質感 */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 更柔和陰影 */
+  color: #333;
+  font-size: 20px;
+  font-weight: normal;
+  padding: 12px 20px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 9999;
+  max-width: 80%;
+  line-height: 1.4;
+  opacity: 0;
+  animation: fadein 0.5s forwards, fadeout 0.5s forwards 6.5s;
+  pointer-events: none;
+}
+/*關心對話筐小尾巴*/
+.toast::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 24px;
+  width: 0;
+  height: 0;
+  border: 8px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.85); /* 半透明 */
+}
+
+
+
+@keyframes fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeout {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+
 </style>
