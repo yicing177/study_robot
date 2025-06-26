@@ -104,6 +104,10 @@
 import { onMounted, ref, watch, computed } from "vue";
 import axios from "axios";
 import Upload from "@/components/upload.vue";
+import { getAuth } from "firebase/auth";
+
+const auth = getAuth();
+const user_id = auth.currentUser?.uid;
 
 const inputText = ref("");
 const emit = defineEmits(["updateMessages", "sendWithText"]);
@@ -217,7 +221,7 @@ const sendMessage = async () => {
   try {
     const res = await axios.post("http://localhost:5000/gpt/ask", {
       message: userMessage,
-      user_id: "test_user",
+      user_id: user_id,//邱改的
     });
     const botReply = res.data.reply;
     appendMessage({ role: "bot", text: botReply });
@@ -346,7 +350,7 @@ async function uploadAndSend(blob) {
 
     const gptRes = await axios.post("http://localhost:5000/gpt/ask_from_stt", {
       filepath,
-      user_id: "test_user",
+      user_id: user_id,//邱改的
     });
 
     const botReply = gptRes.data.reply;
@@ -362,19 +366,15 @@ async function uploadAndSend(blob) {
 const handleSummary = async () => {
   try {
     const res = await axios.post("http://localhost:5000/gpt/summarize", {
-      user_id: "test_user",
+      user_id: user_id,//邱改的
     });
     const summaryText = res.data.summary;
 
-    const newItem = {
-      name: new Date().toLocaleDateString() + " 對話總結",
-      content: summaryText,
-      type: "text",
-    };
-
-    const existing = JSON.parse(localStorage.getItem("summaries") || "[]");
-    existing.unshift(newItem); // 新的放前面
-    localStorage.setItem("summaries", JSON.stringify(existing));
+    // const newItem = {
+    //   name: new Date().toLocaleDateString() + " 對話總結",
+    //   content: summaryText,
+    //   type: "text",
+    // };
 
     emit("updateMessages", { role: "bot", text: "✅ 已加入重點整理！" });
   } catch (err) {
@@ -382,7 +382,6 @@ const handleSummary = async () => {
     emit("updateMessages", { role: "bot", text: "總結失敗，請稍後再試。" });
   }
 };
-
 const confirmReset = async () => {
   const wantsSummary = window.confirm(
     "你想在開始新對話前，先總結目前的對話紀錄嗎？"

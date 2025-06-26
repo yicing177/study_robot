@@ -161,7 +161,7 @@ const handleSendWithText = async (text) => {
   try {
     const res = await axios.post("http://localhost:5000/gpt/ask", {
       message: text,
-      user_id: "test_user",
+      user_id: user_id,//邱改的
     });
     const botReply = res.data.reply;
     messages.value.push({ role: "bot", text: botReply }); // 顯示 GPT 回覆
@@ -221,7 +221,7 @@ const sendHighlight = async (action) => {
 
   try {
     const res = await axios.post("http://localhost:5000/gpt/highlight_action", {
-      user_id: "test_user",
+      user_id: user_id,//邱改的
       text: selectedText.value,
       action: action,
     });
