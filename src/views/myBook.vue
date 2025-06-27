@@ -161,11 +161,12 @@ const viewFile = (book) => {
       query: {
         type: "summary",
         title: book.title,
-        content: book.summary_content,
+        content: book.summary_text,
       },
     });
     return;
   }
+
   const fileURL = book.file_url; //|| book.file; // 替換成你實際存的欄位
   const fileType = book.type || "application/pdf";
 

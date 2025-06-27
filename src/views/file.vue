@@ -109,6 +109,8 @@ const messages = ref([]);
 const showChatRight = ref(false);
 const initialRightInput = ref("");
 
+const user_id = localStorage.getItem("user_id"); // ✅ 加這行
+
 const addMessage = (msg) => {
   messages.value.push(msg); // 不用再加 { role: ..., text: ... }，因為子元件已經是處理好的物件
 };
