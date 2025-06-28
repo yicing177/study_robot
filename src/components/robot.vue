@@ -10,7 +10,9 @@ const liveCanvas = ref(null);
 let app;
 let model;
 
-// Vue `onMounted` 鉤子
+let isInterrupted = false // ✅ 控制 idle 播放
+let idlePlaying = false   // ✅ 防止重複啟動 idle
+
 onMounted(async () => {
   // 測試 Flask API
   const data = await testApi();
@@ -41,68 +43,126 @@ onMounted(async () => {
     model.scale.set(window.innerWidth / 2000);
     model.position.set(app.renderer.width / 2, app.renderer.height / 2);
   });
-  /* 原本動畫
-  // 設定動畫
-  const motion05 = "05.motion3.json";
-  const motion06 = "06.motion3.json";
-  let playCount = 0;
 
-  // 播放指定的動畫
-  function playNextIdleMotion() {
-    if (playCount < 3) {
-      console.log(`正在播放: ${motion05} (第 ${playCount + 1} 次)`);
-      model.motion("TapBody", 0); // 播放第 0 個動作
-      playCount++;
-    } else {
-      console.log(`正在播放: ${motion06}`);
-      model.motion("TapBody", 1); // 播放第 1 個動作
-      playCount = 0; // 重置計數器
-    }
-  }
-
-  // 計時器
-  let playInterval;
-
-  function startMotionLoop() {
-    playInterval = setInterval(() => {
-      playNextIdleMotion();
-    }, 5050);
-  }
-
-  function stopMotionLoop() {
-    clearInterval(playInterval);
-  }
-
-  startMotionLoop();
-  */
-
-  //測試shizuku_t02全部motion
-  //播放 01~10.motion3.json，對應 model3.json 的 "TapBody"
-  const motionCount = 10;
-  let currentMotion = 0;
-
-  async function playMotions() {
-    currentMotion = 0
-    while (currentMotion < motionCount) {
-      console.log(`播放動畫 ${currentMotion + 1}`);
-      await model.motion("TapBody", currentMotion);
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // 停頓 1 秒
-      currentMotion++;
-    }
-  }
-  playMotions();
+  // ✅ 啟動 idle 播放
+  startIdleLoop();
 
   onBeforeUnmount(() => {
-    stopMotionLoop();
     model?.destroy();
     app?.destroy();
   });
 });
+
+// ✅ Idle 播放函式（插入）
+async function startIdleLoop() {
+  if (idlePlaying) return;
+  idlePlaying = true;
+
+  while (true) {
+    if (!isInterrupted) {
+      console.log("播放 idle TapBody[9]")
+      await model.motion("TapBody", 9)
+      await wait(500)
+    } else {
+      await wait(20)
+    }
+  }
+}
+
+// 通用動畫播放器（依序播放，含間隔）
+async function playMotionGroup(indices, label) {
+  isInterrupted = true
+  for (const i of indices) {
+    console.log("播放 ${label} 動畫 TapBody[${i}]")
+    await model.motion("TapBody", i)
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+  }
+  isInterrupted = false
+}
+
+async function playMotionGroupWithRepeat(before, repeatIndex, after, label) {
+  if (!model) {
+    console.warn("模型未初始化")
+    return
+  }
+
+  isInterrupted = true
+
+  // 開頭
+  for (const i of before) {
+    console.log('播放 ${label} 開頭 TapBody[${i}]')
+    await model.motion("TapBody", i)
+    await wait(1000)
+  }
+
+  // 中間重複
+  const [repeatMotionIndex, repeatTimes] = repeatIndex
+  for (let i = 0; i < repeatTimes; i++) {
+    console.log('播放 ${label} 重複 ${i + 1} 次 TapBody[${repeatMotionIndex}]')
+    await model.motion("TapBody", repeatMotionIndex)
+    await wait(500)
+  }
+
+  // 結尾
+  for (const i of after) {
+    console.log('播放 ${label} 結尾 TapBody[${i}]')
+    await model.motion("TapBody", i)
+    await wait(1000)
+  }
+
+  isInterrupted = false
+}
+
+// 稱讚動作
+function Compliment() {
+  return playMotionGroup([18, 13, 15], "稱讚")
+}
+
+// 打氣動作
+function Encourage() {
+  return playMotionGroup([18, 14, 16], "打氣")
+}
+
+// 唱歌動作
+function Sing() {
+  return playMotionGroup([18, 17], "唱歌")
+}
+
+// 打招呼動作
+function SayHi() {
+  return playMotionGroup([10], "打招呼")
+}
+
+// 說話(揮手)to看人等指令 動作
+function Speak_1_keep(repeatCount = 5) {
+  return playMotionGroupWithRepeat([1, 5], [4, repeatCount], [6], "說話")
+}
+
+// 說話(揮手)to微笑回待機 動作
+function Speak_1_end(repeatCount = 5) {
+  return playMotionGroupWithRepeat([1, 5], [4, repeatCount], [7], "說話")
+}
+
+// 說話(無揮手)動作
+function Speak_2(repeatCount = 5) {
+  return playMotionGroupWithRepeat([18], [11, repeatCount], [12], "說話")
+}
+
+// 說話(無揮手)動作
+function watch(repeatCount = 5) {
+  return playMotionGroupWithRepeat([1], [2, repeatCount], [3], "注視")
+}
+
+// 等待工具
+function wait(ms) {
+  return new Promise((r) => setTimeout(r, ms))
+}
 </script>
 
 <template>
-  <div class="robot">
-    <canvas ref="liveCanvas" width="100%"></canvas>
+  <div class="robot-container">
+    <canvas ref="liveCanvas" />
+    <button class="test-button" @click="Sing">測試</button>
   </div>
 </template>
 
@@ -112,4 +172,22 @@ canvas {
   height: auto;
   display: block;
 }
-</style>
+
+.robot-container {
+  position: relative;
+}
+
+.test-button {
+  position: absolute;
+  top: 50%;
+  left: 60%;
+  transform: translateY(-50%);
+  z-index: 100;
+  padding: 8px 12px;
+  background-color: rgba(255, 255, 255, 0.85);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+</style> 
