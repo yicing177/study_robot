@@ -1,0 +1,48 @@
+{
+	"Version": 3,
+	"FileReferences": {
+		"Moc": "shizuku_tp.moc3",
+		"Textures": [
+			"shizuku_tp.1024/texture_00.png",
+			"shizuku_tp.1024/texture_01.png",
+			"shizuku_tp.1024/texture_02.png",
+			"shizuku_tp.1024/texture_03.png",
+			"shizuku_tp.1024/texture_04.png",
+			"shizuku_tp.1024/texture_05.png"
+		],
+		"Physics": "shizuku_tp.physics3.json",
+		"Pose": "shizuku_tp.pose3.json",
+		"DisplayInfo": "shizuku_tp.cdi3.json",
+	    "Motions": {
+      	  "TapBody": [
+        	{ "File": "motion/P01.motion3.json" },
+        	{ "File": "motion/P02.motion3.json" },
+        	{ "File": "motion/P03.motion3.json" },
+        	{ "File": "motion/P04.motion3.json" },
+        	{ "File": "motion/P05.motion3.json" },
+        	{ "File": "motion/P06.motion3.json" },
+        	{ "File": "motion/P07.motion3.json" },
+        	{ "File": "motion/P08.motion3.json" },
+        	{ "File": "motion/P09.motion3.json" },
+        	{ "File": "motion/P10.motion3.json" }
+      	  ]
+    	}
+	},
+	"Groups": [
+		{
+			"Target": "Parameter",
+			"Name": "LipSync",
+			"Ids": [
+				"PARAM_MOUTH_OPEN_Y"
+			]
+		},
+		{
+			"Target": "Parameter",
+			"Name": "EyeBlink",
+			"Ids": [
+				"PARAM_EYE_L_OPEN",
+				"PARAM_EYE_R_OPEN"
+			]
+		}
+	]
+}
