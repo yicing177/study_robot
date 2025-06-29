@@ -42,15 +42,19 @@
       </button>
     </div>
   </div>
+  <audio ref="greetingAudio"></audio>
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 import Robot from "@/components/Robot.vue";
 import roomImage from "@/assets/image/room4.png";
 import chat_bottom from "../components/chat_bottom.vue";
 import botAvatar from "@/assets/image/avatar_bot.svg";
 import userAvatar from "@/assets/image/avatar_user.svg";
+import Greet1 from "@/assets/audio/welcome_01.wav";
+import Greet2 from "@/assets/audio/welcome_02.wav";
+import Greet3 from "@/assets/audio/welcome_03.wav";
 
 const backgroundStyle = ref({
   backgroundImage: `url(${roomImage})`, // 使用導入的圖片路徑
@@ -70,6 +74,28 @@ const addMessage = (msg) => {
 const setInputText = (msg) => {
   inputText.value = msg;
 };
+
+const greetingAudio = ref(null);
+const greetingAudios = [Greet1, Greet2, Greet3];
+
+onMounted(() => {
+  const handler = () => {
+    const randomIndex = Math.floor(Math.random() * greetingAudios.length);
+    const selectedGreeting = greetingAudios[randomIndex];
+
+    const audio = greetingAudio.value;
+    audio.src = selectedGreeting;
+    audio.volume = 1;
+    audio.play();
+
+    console.log("✅ 播放語音檔：", selectedGreeting);
+    window.removeEventListener("click", handler); // 移除監聽器
+  };
+
+  window.addEventListener("click", handler);
+});
+
+
 
 const dialogWrapper = ref(null);
 

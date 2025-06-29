@@ -4,16 +4,24 @@
       <Robot />
     </div>
     <div class="chat_right_container">
-      <chat_right :initialText="initialText" :messages="messages" @updateMessages="addMessage"/>
+      <chat_right
+        :initialText="initialText"
+        :messages="messages"
+        @updateMessages="addMessage"
+      />
     </div>
+    <audio ref="greetingAudio"></audio>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import Robot from "@/components/Robot.vue";
 import chat_right from "@/components/chat_right.vue";
 import { useRoute } from "vue-router";
+import Greet1 from "@/assets/audio/a_test_01.wav";
+import Greet2 from "@/assets/audio/a_test_02.wav";
+import Greet3 from "@/assets/audio/a_test_03.wav";
 
 const route = useRoute();
 const messages = ref([]); // ✅ 新增這個
@@ -31,6 +39,30 @@ const addMessage = (msg) => {
   messages.value.push(msg);
 };
 messages.value.push(...quizStarter); // ✅ 初始訊息丟進 messages
+
+const greetingAudio = ref(null);
+const greetingAudios = [Greet1, Greet2, Greet3];
+
+onMounted(() => {
+  const handler = () => {
+    if (event.target.closest(".elf-button")) {
+      console.log("🧚‍♀️ 小精靈被點了，不播放語音");
+      return;
+    }
+    const randomIndex = Math.floor(Math.random() * greetingAudios.length);
+    const selectedGreeting = greetingAudios[randomIndex];
+
+    const audio = greetingAudio.value;
+    audio.src = selectedGreeting;
+    audio.volume = 1;
+    audio.play();
+
+    console.log("✅ 播放語音檔：", selectedGreeting);
+    window.removeEventListener("click", handler); // 移除監聽器
+  };
+
+  window.addEventListener("click", handler);
+});
 </script>
 
 <style scoped>
