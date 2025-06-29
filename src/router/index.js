@@ -13,7 +13,7 @@ const routes = [
   { path: "/", name: "HomePage", 
     component: home ,
     meta: { requiresAuth: true },
-  }, // 首頁 // ✅ 需要登入
+  }, // 首頁 // 需要登入
   { path: "/register", component: register }, // 註冊
   { path: "/login", component: login }, // 登入
   { path: "/calendar",
@@ -36,7 +36,7 @@ const router = createRouter({
   history: createWebHistory(), // 使用 HTML5 History 模式
   routes,
 });
-// ✅ 全域前置守衛
+// 全域前置守衛
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
 

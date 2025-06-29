@@ -103,3 +103,14 @@ button {
   }
 }
 */
+/*移除鏡頭匡*/
+#webgazerVideoContainer, 
+#webgazerVideoFeed, 
+#webgazerFaceOverlay, 
+#webgazerFaceFeedbackBox {
+  display: none !important;
+/*移除追焦小點點*/
+}#webgazerGazeDot {
+  display: none !important;
+}
+
