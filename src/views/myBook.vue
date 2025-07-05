@@ -161,7 +161,7 @@ const viewFile = (book) => {
       query: {
         type: "summary",
         title: book.title,
-        content: book.summary_text,
+        content: book.summary_text,//這行一定要對應到
       },
     });
     return;
