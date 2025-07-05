@@ -46,8 +46,9 @@ const handleFileUpload = async (event) => {
 
   // 建立 FormData 並傳給 Flask 後端
   const formData = new FormData();
+  const user_id = localStorage.getItem("uid");
   formData.append("file", file);
-  formData.append("user_id", "test-user"); // 可以根據登入帳號改(待處理)
+  formData.append("user_id", user_id); // 可以根據登入帳號改(待處理)
   formData.append("title", file.name);
 
   try {

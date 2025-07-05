@@ -100,51 +100,37 @@ export default defineComponent({
       this.calendarOptions.weekends = !this.calendarOptions.weekends; // update a property
     },
     handleDateSelect(selectInfo) {
-      let title = prompt("Please enter a new title for your event");
-      if (!title) return; // ← 沒輸入就跳出
-      //let calendarApi = selectInfo.view.calendar;
-      //calendarApi.unselect(); // clear date selection
+
+      if(!title) return;// ← 沒輸入就跳出
       const payload = {
         title,
-        user_id: localStorage.getItem("uid"), // or 你用的登入方式
         datetime: selectInfo.startStr,
-        content: "", // 可加上說明
-        xposition: 0,
-        yposition: 0,
+        content: "",  // 可加上說明
       };
       console.log("送出的 payload:", payload);
-      axios
-        .post("http://localhost:5000/calendar", payload, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        })
-        .then((res) => {
-          const newEvent = res.data.calendar;
-          selectInfo.view.calendar.addEvent({
-            id: newEvent.calendar_id,
-            title: newEvent.title,
-            start: newEvent.datetime,
-            allDay: true,
-          });
-        })
-        .catch((err) => {
-          console.error("新增失敗", err);
-          alert("新增事件失敗");
+    //post
+      axios.post("http://localhost:5000/calendar", payload, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": localStorage.getItem("token")
+      }
+    })
+      .then(res => {
+        const newEvent = res.data.calendar;
+        selectInfo.view.calendar.addEvent({
+          id: newEvent.calendar_id,
+          title: newEvent.title,
+          start: newEvent.datetime,
+          allDay: true,
         });
-      selectInfo.view.calendar.unselect(); // 清除選取
-    },
+      })
+      .catch(err => {
+        console.error("新增失敗", err);
+        alert("新增事件失敗");
+      });
+    selectInfo.view.calendar.unselect(); // 清除選取
+  },
 
-    //   if (title) {
-    //     calendarApi.addEvent({
-    //       id: createEventId(),
-    //       title,
-    //       start: selectInfo.startStr,
-    //       end: selectInfo.endStr,
-    //       allDay: selectInfo.allDay,
-    //     });
-    //   }
-    // },
     handleEventClick(clickInfo) {
       if (confirm(`確認刪除事件 '${clickInfo.event.title}'？`)) {
         const id = clickInfo.event.id;
@@ -165,32 +151,30 @@ export default defineComponent({
     },
   },
   mounted() {
-    const uid = localStorage.getItem("uid");
 
-    this.calendarOptions.select = this.handleDateSelect;
-    this.calendarOptions.eventClick = this.handleEventClick;
-    this.calendarOptions.eventsSet = this.handleEvents;
+  this.calendarOptions.select = this.handleDateSelect;
+  this.calendarOptions.eventClick = this.handleEventClick;
+  this.calendarOptions.eventsSet = this.handleEvents;
 
-    axios
-      .get("http://localhost:5000/calendar")
-      .then((res) => console.log("✅ 成功回傳：", res.data))
-      .catch((err) => console.error("❌ 錯誤：", err.response.data));
 
-    axios
-      .get("http://localhost:5000/calendar")
-      .then((res) => {
-        const events = res.data.map((e) => ({
-          id: e.calendar_id,
-          title: e.title,
-          start: e.datetime,
-          allDay: true,
-        }));
-        this.calendarOptions.events = events;
-      })
-      .catch((err) => {
-        console.error("載入行事曆失敗", err);
-      });
-  },
+  axios.get("http://localhost:5000/calendar",{  
+  headers: {
+    "Authorization": localStorage.getItem("token")
+    }
+  })
+  .then(res => {
+    const events = res.data.map(e => ({
+      id: e.calendar_id,
+      title: e.title,
+      start: e.datetime,
+      allDay: true
+    }));
+    this.calendarOptions.events = events;
+  })
+  .catch(err => {
+    console.error("載入行事曆失敗", err);
+  });
+  }
 });
 </script>
 
