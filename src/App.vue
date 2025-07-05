@@ -17,7 +17,7 @@ import FloatingBottom from '@/components/floating_bottom.vue';
   <div id="app">
 
     <router-view :key="$route.fullPath" />
-    <FloatingBottom v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/'"/>
+    <FloatingBottom class="elf-button" v-if="route.path !== '/login' && route.path !== '/register' && route.path !== '/'"/>
 
   </div>
 

@@ -16,6 +16,7 @@
       >
         重點整理
       </button>
+      <audio ref="shelfAudio"></audio>
     </div>
     <div class="book_shelf">
       <div class="shelf" v-for="(row, rowIndex) in bookRows" :key="rowIndex">
@@ -45,10 +46,14 @@
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
+import ShelfSound1 from "@/assets/audio/a_material_01.wav";
+import ShelfSound2 from "@/assets/audio/a_material_02.wav";
+
 
 const router = useRouter();
 
 const currentShelf = ref("myBook"); // "myBook" 或 "summary"
+const shelfAudio = ref(null);
 const uploadedFiles = ref([]);
 const summaries = ref([]); // 暫時為空，未來串後端放這邊
 
@@ -132,6 +137,15 @@ onMounted(async () => {
     console.error("❌ 我的教材無法取得書架資料", err);
   }
 
+  const audio = shelfAudio.value;
+  if (currentShelf.value === "myBook" && audio) {
+    audio.src = ShelfSound1;
+    audio.volume = 1;
+    audio.play().catch((e) => {
+      console.warn("📌 初始語音播放被阻擋：", e);
+    });
+  }
+
 });
 
 onMounted(async () => {
@@ -151,6 +165,20 @@ onMounted(async () => {
 //切換顯示的書架
 const switchShelf = (shelfName) => {
   currentShelf.value = shelfName;
+
+  const audio = shelfAudio.value;
+  if (!audio) return;
+
+  if (shelfName === "myBook") {
+    audio.src = ShelfSound1;
+  } else if (shelfName === "summary") {
+    audio.src = ShelfSound2;
+  }
+
+  audio.volume = 1;
+  audio.play().catch((e) => {
+    console.warn("音訊播放被阻擋：", e);
+  });
 };
 
 const viewFile = (book) => {

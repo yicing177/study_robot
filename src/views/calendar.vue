@@ -1,12 +1,65 @@
+<template>
+  <div class="calendar_container">
+    <div class="demo-app">
+      <div class="demo-app-main">
+        <FullCalendar class="demo-app-calendar" :options="calendarOptions">
+          <template v-slot:eventContent="arg">
+            <b>{{ arg.timeText }}</b>
+            <i>{{ arg.event.title }}</i>
+          </template>
+        </FullCalendar>
+      </div>
+      <div class="demo-app-sidebar">
+        <h2>All Events ({{ currentEvents.length }})</h2>
+        <ul>
+          <li v-for="event in currentEvents" :key="event.id">
+            <b>{{ event.startStr }}</b>
+            <i>{{ event.title }}</i>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <audio ref="greetingAudio"></audio>
+  </div>
+</template>
+
 <script>
-import { defineComponent } from "vue";
+import { defineComponent, ref, onMounted } from "vue";
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
+import Greet from "@/assets/audio/a_calender_01.wav";
 
 export default defineComponent({
+  setup() {
+    const greetingAudio = ref(null);
+
+    onMounted(() => {
+      const handler = () => {
+        const audio = greetingAudio.value;
+        if (event.target.closest(".elf-button")) {
+          console.log("🧚‍♀️ 小精靈被點了，不播放語音");
+          return;
+        }
+
+        if (!audio) return;
+        audio.src = Greet;
+        audio.volume = 1;
+        audio.play();
+        console.log("✅ 使用者點擊後播放語音");
+
+        window.removeEventListener("click", handler);
+      };
+      window.addEventListener("click", handler);
+    });
+
+    return {
+      greetingAudio, // ⬅️ 必須 return 才能讓 template 抓到 ref
+    };
+  },
+
   components: {
     FullCalendar,
   },
@@ -24,7 +77,7 @@ export default defineComponent({
           right: "dayGridMonth,timeGridWeek,timeGridDay",
         },
         initialView: "dayGridMonth",
-        events:[], // alternatively, use the `events` setting to fetch from a feed
+        events: [], // alternatively, use the `events` setting to fetch from a feed
         editable: true,
         selectable: true,
         selectMirror: true,
@@ -47,7 +100,7 @@ export default defineComponent({
       this.calendarOptions.weekends = !this.calendarOptions.weekends; // update a property
     },
     handleDateSelect(selectInfo) {
-      let title = prompt("Please enter a new title for your event");
+
       if(!title) return;// ← 沒輸入就跳出
       const payload = {
         title,
@@ -77,14 +130,16 @@ export default defineComponent({
       });
     selectInfo.view.calendar.unselect(); // 清除選取
   },
+
     handleEventClick(clickInfo) {
       if (confirm(`確認刪除事件 '${clickInfo.event.title}'？`)) {
         const id = clickInfo.event.id;
-        axios.delete(`http://localhost:5000/calendar/${id}`)
+        axios
+          .delete(`http://localhost:5000/calendar/${id}`)
           .then(() => {
             clickInfo.event.remove();
           })
-          .catch(err => {
+          .catch((err) => {
             console.error("刪除失敗", err);
             alert("刪除事件失敗");
           });
@@ -94,9 +149,9 @@ export default defineComponent({
     handleEvents(events) {
       this.currentEvents = events;
     },
-
   },
   mounted() {
+
   this.calendarOptions.select = this.handleDateSelect;
   this.calendarOptions.eventClick = this.handleEventClick;
   this.calendarOptions.eventsSet = this.handleEvents;
@@ -123,30 +178,6 @@ export default defineComponent({
 });
 </script>
 
-<template>
-  <div class="calendar_container">
-    <div class="demo-app">
-      <div class="demo-app-main">
-        <FullCalendar class="demo-app-calendar" :options="calendarOptions">
-          <template v-slot:eventContent="arg">
-            <b>{{ arg.timeText }}</b>
-            <i>{{ arg.event.title }}</i>
-          </template>
-        </FullCalendar>
-      </div>
-      <div class="demo-app-sidebar">
-        <h2>All Events ({{ currentEvents.length }})</h2>
-        <ul>
-          <li v-for="event in currentEvents" :key="event.id">
-            <b>{{ event.startStr }}</b>
-            <i>{{ event.title }}</i>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</template>
-
 <style scoped>
 h2 {
   margin: 0;
@@ -167,11 +198,11 @@ b {
   /* used for event dates/times */
   margin-right: 3px;
 }
-.calendar_container{
-    display: flex;
-    justify-content: flex-end;
-    padding: 10px 20px 10px 0px ;
-    height: 100%;
+.calendar_container {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 20px 10px 0px;
+  height: 100%;
 }
 .demo-app {
   display: flex;
