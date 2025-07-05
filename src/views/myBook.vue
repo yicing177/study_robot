@@ -28,10 +28,15 @@
             :class="{ placeholder: book.isPlaceholder }"
           >
             <button v-if="!book.isPlaceholder" @click="viewFile(book)">
-              <p>{{ book.name }}</p>
+              <p>{{ book.title || book.summary_text?.slice(0, 10) }}</p>
             </button>
           </div>
         </div>
+      </div>
+      <div class="pagination-controls">
+        <button @click="prevPage" :disabled="currentPage === 1">上一頁</button>
+        <span>{{ currentPage }} / {{ maxPage }}</span>
+        <button @click="nextPage" :disabled="currentPage === maxPage">下一頁</button>
       </div>
     </div>
   </div>
@@ -40,8 +45,10 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import axios from "axios";
 import ShelfSound1 from "@/assets/audio/a_material_01.wav";
 import ShelfSound2 from "@/assets/audio/a_material_02.wav";
+
 
 const router = useRouter();
 
@@ -50,36 +57,86 @@ const shelfAudio = ref(null);
 const uploadedFiles = ref([]);
 const summaries = ref([]); // 暫時為空，未來串後端放這邊
 
-// 書架每層最多顯示的書本數
-const booksPerRow = 5;
 
-// 固定顯示三層，空位補上 placeholder
+const booksPerRow = 5;// 書架每層最多顯示的書本數
+const rowsPerPage = 3;
+const currentPage = ref(1); // 🆕 目前是第幾頁
+
+// // 固定顯示三層，空位補上 placeholder
+// const bookRows = computed(() => {
+//   const rows = [];
+//   const source =
+//     currentShelf.value === "myBook" 
+//       ? uploadedFiles.value || []
+//       : summaries.value || [];
+
+//   for (let i = 0; i < 3; i++) {
+//     const start = i * booksPerRow;
+//     const row = source.slice(start, start + booksPerRow);
+//     while (row.length < booksPerRow) {
+//       row.push({ name: "", isPlaceholder: true });
+//     }
+//     rows.push(row);
+//   }
+//   return rows;
+// });
+
+//邱  我先用可以上下頁 因為我是用user_id去抓使用者上傳過的教材
 const bookRows = computed(() => {
-  const rows = [];
-  const source =
-    currentShelf.value === "myBook" ? uploadedFiles.value : summaries.value;
+  const source = currentShelf.value === "myBook" ? uploadedFiles.value || []: summaries.value || [] ;
+    
 
-  for (let i = 0; i < 3; i++) {
-    const start = i * booksPerRow;
-    const row = source.slice(start, start + booksPerRow);
+  const startIndex = (currentPage.value - 1) * booksPerRow * rowsPerPage;
+  const endIndex = startIndex + booksPerRow * rowsPerPage;
+  const currentBooks = source.slice(startIndex, endIndex);
+
+  const rows = [];
+  for (let i = 0; i < currentBooks.length; i += booksPerRow) {
+    const row = currentBooks.slice(i, i + booksPerRow);
     while (row.length < booksPerRow) {
       row.push({ name: "", isPlaceholder: true });
     }
     rows.push(row);
   }
+
   return rows;
 });
 
-onMounted(() => {
-  const saved = JSON.parse(localStorage.getItem("uploadedFiles"));
-  if (Array.isArray(saved)) {
-    uploadedFiles.value = saved;
+const maxPage = computed(() => {
+  const total =
+    currentShelf.value === "myBook"
+      ? uploadedFiles.value.length
+      : summaries.value.length;
+  return Math.ceil(total / (booksPerRow * rowsPerPage));
+});
+
+const nextPage = () => {
+  if (currentPage.value < maxPage.value) currentPage.value++;
+};
+
+const prevPage = () => {
+  if (currentPage.value > 1) currentPage.value--;
+};
+
+
+onMounted(async () => {
+  try {
+    const res = await axios.get("http://localhost:5000/get_all_materials", {
+      headers: {
+        Authorization: localStorage.getItem("token"),
+      },
+    });
+
+      //書本排序照時間
+    uploadedFiles.value = res.data.sort((a, b) => {
+      return new Date(b.upload_time) - new Date(a.upload_time);
+    });
+    
+    console.log("✅ 我的教材書架拿到的資料：", uploadedFiles.value);
+  } catch (err) {
+    console.error("❌ 我的教材無法取得書架資料", err);
   }
 
-  const savedSummaries = JSON.parse(localStorage.getItem("summaries"));
-  if (Array.isArray(savedSummaries)) {
-    summaries.value = savedSummaries;
-  }
   const audio = shelfAudio.value;
   if (currentShelf.value === "myBook" && audio) {
     audio.src = ShelfSound1;
@@ -88,8 +145,23 @@ onMounted(() => {
       console.warn("📌 初始語音播放被阻擋：", e);
     });
   }
+
 });
 
+onMounted(async () => {
+  try {
+    const res = await axios.get("http://localhost:5000/gpt/get_summaries", {
+      headers: {
+        Authorization: localStorage.getItem("token"),
+      },
+    });
+    summaries.value = res.data.summaries || [];
+    console.log("✅ 重點整理書架拿到的資料：", summaries.value);
+  } catch (err) {
+    console.error("❌ 重點整理無法取得書架資料", err);
+  }
+
+});
 //切換顯示的書架
 const switchShelf = (shelfName) => {
   currentShelf.value = shelfName;
@@ -116,12 +188,13 @@ const viewFile = (book) => {
       path: "/file",
       query: {
         type: "summary",
-        title: book.name,
-        content: book.content,
+        title: book.title,
+        content: book.summary_text,
       },
     });
     return;
   }
+
   const fileURL = book.file_url; //|| book.file; // 替換成你實際存的欄位
   const fileType = book.type || "application/pdf";
 
