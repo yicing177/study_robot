@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div :style="backgroundStyle" class="room_image"></div>
-    <Robot />
+    <Robot ref="robotRef" />
     <div class="chatting">
       <div class="default" v-if="!isChatOpen">
         <button class="d1" @click="setInputText('明天要考試了好焦慮...')">
@@ -58,7 +58,6 @@ import Greet1 from "@/assets/audio/welcome_01.wav";
 import Greet2 from "@/assets/audio/welcome_02.wav";
 import Greet3 from "@/assets/audio/welcome_03.wav";
 
-
 const backgroundStyle = ref({
   backgroundImage: `url(${roomImage})`, // 使用導入的圖片路徑
   backgroundPosition: "center", // 置中
@@ -68,13 +67,11 @@ const isChatOpen = ref(false);
 const inputText = ref(""); // 預設傳進 chat_bottom 的文字
 const messages = ref([]); // 所有訊息紀錄
 
-
 const toastMessage = ref("");
 const toastVisible = ref(false);
 
 const hasGreeted = ref(false);
 const gazeCheckEnabled = ref(false);
-
 
 function showToast(message, duration = 10000) {
   toastMessage.value = message;
@@ -97,24 +94,44 @@ const setInputText = (msg) => {
 const greetingAudio = ref(null);
 const greetingAudios = [Greet1, Greet2, Greet3];
 
-onMounted(() => {
-  const handler = () => {
-    const randomIndex = Math.floor(Math.random() * greetingAudios.length);
-    const selectedGreeting = greetingAudios[randomIndex];
+const robotRef = ref(null);
+const motionSet = (fn) => {
+  fn();
+};
+onMounted(async () => {
+  const randomIndex = Math.floor(Math.random() * greetingAudios.length);
+  const selectedGreeting = greetingAudios[randomIndex];
 
-    const audio = greetingAudio.value;
-    audio.src = selectedGreeting;
-    audio.volume = 1;
+  const audio = greetingAudio.value;
+  audio.src = selectedGreeting;
+  audio.volume = 1;
+
+  const handler = async () => {
     audio.play();
 
-    console.log("✅ 播放語音檔：", selectedGreeting);
+    if (randomIndex == 0) {
+      showToast("哈囉哈囉!最近一切順利嗎?");
+    }
+
+    if (randomIndex == 1) {
+      showToast("今天過得如何呀?");
+    }
+
+    if (randomIndex == 2) {
+      showToast("嗨嗨!讓我來陪你複習英文吧!");
+    }
+
+    // 停掉 idle
+    robotRef.value?.stopIdleLoop();
+    await robotRef.value?.SayHi(); // ✅ 等它播完
+    robotRef.value?.startIdleLoop(); // ✅ 播完再手動接回 idle
+
+    console.log("✅ 播放語音檔：", selectedGreeting, randomIndex);
     window.removeEventListener("click", handler); // 移除監聽器
   };
-
   window.addEventListener("click", handler);
+  gazeCheckEnabled.value = true;
 });
-
-
 
 const dialogWrapper = ref(null);
 
@@ -141,17 +158,29 @@ const { isLooking, gazeX, gazeY } = useWebGazer(
     showToast("你回來啦～要我幫忙嗎？");
   }
 );
-// 畫面載入後先說幾句話，延後啟用 gaze 偵測
-onMounted(() => {
-  showToast("今天也一起加油吧！");
+
+/*
+畫面載入後先說幾句話，延後啟用 gaze 偵測
+onMounted(async () => {
+  setTimeout(async () => {
+    // 停掉 idle
+    robotRef.value?.stopIdleLoop();
+
+    // 播完再接回 idle
+    await robotRef.value?.SayHi(); // ✅ 等它播完
+    robotRef.value?.startIdleLoop(); // ✅ 播完再手動接回 idle
+  }, 300);
+
+  showToast("哈囉哈囉!最近一切順利嗎?");
   setTimeout(() => {
     showToast("有我陪你一起讀書喔！");
   }, 3500);
   setTimeout(() => {
     showToast("需要幫忙隨時跟我說～");
-    gazeCheckEnabled.value = true; // 👈 在這之後才啟用眼神判斷
+    gazeCheckEnabled.value = true;
   }, 7000);
 });
+*/
 </script>
 
 <style scoped>
@@ -168,7 +197,7 @@ onMounted(() => {
   cursor: pointer;
   z-index: 10;
 }
-.toggle_btn:hover{
+.toggle_btn:hover {
   background-color: #c9b8ac8e;
 }
 .container {
@@ -293,7 +322,7 @@ onMounted(() => {
   font-weight: normal;
   padding: 12px 20px;
   border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 9999;
   max-width: 80%;
   line-height: 1.4;
@@ -313,17 +342,21 @@ onMounted(() => {
   border-top-color: rgba(255, 255, 255, 0.85); /* 半透明 */
 }
 
-
-
 @keyframes fadein {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes fadeout {
-  from { opacity: 1; }
-  to { opacity: 0; }
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
-
-
 </style>

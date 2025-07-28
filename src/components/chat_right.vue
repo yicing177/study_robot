@@ -427,6 +427,7 @@ const confirmReset = async () => {
   background-color: #c9b8ac;
   padding: 15px 0px;
   top: 0px;
+  right: 0px;
 }
 .summary,
 .reset {
