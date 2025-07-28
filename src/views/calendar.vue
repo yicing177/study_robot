@@ -100,7 +100,7 @@ export default defineComponent({
       this.calendarOptions.weekends = !this.calendarOptions.weekends; // update a property
     },
     handleDateSelect(selectInfo) {
-
+      let title = prompt("Please enter a new title for your event");
       if(!title) return;// ← 沒輸入就跳出
       const payload = {
         title,

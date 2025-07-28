@@ -1,15 +1,8 @@
 <template>
   <div class="robot">
-    <canvas ref="liveCanvas" style="width: 100%"></canvas>
+    <canvas ref="liveCanvas" width="100%"></canvas>
   </div>
-  <!--
-  <div class="btn_group">
-    <button class="test-button" @click="Sing">唱歌</button>
-    <button class="test-button" @click="Compliment">稱讚</button>
-    <button class="test-button" @click="Encourage">打氣</button>
-    <button class="test-button" @click="SayHi">打招呼</button>
-  </div>
---></template>
+</template>
 
 <script setup>
 import * as PIXI from "pixi.js";
@@ -25,16 +18,9 @@ let model;
 
 let isInterrupted = false; // ✅ 控制 idle 播放
 let idlePlaying = false; // ✅ 防止重複啟動 idle
+let idleShouldStop = false;
 
 onMounted(async () => {
-  // 測試 Flask API
-  const data = await testApi();
-  if (data) {
-    console.log("Vue 成功接收到後端回應:", data);
-  } else {
-    console.log("Vue 與 Flask API 連線失敗");
-  }
-
   // PIXI 應用初始化
   app = new PIXI.Application({
     view: liveCanvas.value,
@@ -60,7 +46,7 @@ onMounted(async () => {
   });
 
   // ✅ 啟動 idle 播放
-  startIdleLoop();
+  await startIdleLoop();
 
   onBeforeUnmount(() => {
     model?.destroy();
@@ -68,31 +54,117 @@ onMounted(async () => {
   });
 });
 
+function playMotionAndWait(index) {
+  return new Promise((resolve, reject) => {
+    if (!model) {
+      console.warn("⚠️ Live2D 模型尚未初始化完成");
+      return reject("model not ready");
+    }
+
+    console.log(`🎬 開始播放 TapBody[${index}]`);
+    
+    // 設定超時機制，避免永遠等待
+    const timeout = setTimeout(() => {
+      console.warn(`⚠️ TapBody[${index}] 播放超時，強制結束`);
+      resolve(); // 即使超時也要 resolve，避免卡住
+    }, 5000); // 5秒超時
+
+    try {
+      const result = model.motion("TapBody", index, {
+        onFinished: () => {
+          console.log(`✅ TapBody[${index}] 播放完成`);
+          clearTimeout(timeout); // 清除超時
+          resolve();
+        },
+        onError: (error) => {
+          console.error(`❌ TapBody[${index}] 播放出錯:`, error);
+          clearTimeout(timeout);
+          resolve(); // 即使出錯也要 resolve，避免卡住
+        }
+      });
+      
+      // 檢查 motion 方法是否正確返回
+      console.log(`🔍 motion 方法返回值:`, result);
+      
+      // 如果 motion 方法沒有返回值或返回 false，可能表示動畫不存在
+      if (result === false || result === null) {
+        console.warn(`⚠️ TapBody[${index}] 可能不存在或無法播放`);
+        clearTimeout(timeout);
+        resolve();
+      }
+      
+    } catch (error) {
+      console.error(`❌ 調用 motion 方法出錯:`, error);
+      clearTimeout(timeout);
+      resolve(); // 出錯也要 resolve
+    }
+  });
+}
+
+function stopIdleLoop() {
+  idleShouldStop = true;
+}
+
 // ✅ Idle 播放函式（插入）
 async function startIdleLoop() {
-  if (idlePlaying) return;
+  console.log("🎬 開始 startIdleLoop");
+  
+  // 如果已經在播放中，直接返回
+  if (idlePlaying) {
+    console.log("⚠️ Idle 已在播放中，跳過");
+    return;
+  }
+  
+  // 重置狀態
+  idleShouldStop = false;
   idlePlaying = true;
-
-  while (true) {
-    if (!isInterrupted) {
-      console.log("播放 idle TapBody[9]");
-      await model.motion("TapBody", 9);
-      await wait(500);
-    } else {
-      await wait(20);
+  
+  try {
+    while (!idleShouldStop) { // ✅ 修正：檢查停止條件
+      if (!isInterrupted) {
+        console.log("播放 idle TapBody[9]");
+        await model.motion("TapBody", 9);
+        await wait(500);
+      } else {
+        await wait(20);
+      }
     }
+  } catch (error) {
+    console.error("Idle 播放出錯:", error);
+  } finally {
+    // ✅ 確保狀態重置
+    idlePlaying = false;
+    console.log("🛑 Idle 播放結束");
   }
 }
 
 // 通用動畫播放器（依序播放，含間隔）
 async function playMotionGroup(indices, label) {
+  console.log(`🎬 開始播放 ${label} 動畫組`);
+  
+  // 停止 idle 並等待它真正停止
+  stopIdleLoop();
   isInterrupted = true;
-  for (const i of indices) {
-    console.log(`播放${label} 動畫 TapBody[${i}]`);
-    model.motion("TapBody", i);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  
+  // 等待 idle 真正停止
+  let waitCount = 0;
+  while (idlePlaying && waitCount < 50) { // 最多等待 1 秒
+    await wait(20);
+    waitCount++;
   }
-  isInterrupted = false;
+  
+  try {
+    for (const i of indices) {
+      console.log(`🎬 播放 ${label} 動畫 TapBody[${i}]`);
+      await playMotionAndWait(i);
+      await wait(200);
+    }
+  } catch (error) {
+    console.error(`${label} 動畫播放出錯:`, error);
+  } finally {
+    isInterrupted = false;
+    console.log(`✅ ${label} 動畫組播放完成`);
+  }
 }
 
 async function playMotionGroupWithRepeat(before, repeatIndex, after, label) {
@@ -172,6 +244,12 @@ function watch(repeatCount = 5) {
 function wait(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
+
+defineExpose({
+  SayHi,
+  startIdleLoop, // ✅ 加這行
+  stopIdleLoop, // ✅ 也暴露出來給外面可叫用
+});
 </script>
 
 <style>
@@ -179,13 +257,6 @@ canvas {
   width: 100%;
   height: auto;
   display: block;
-}
-
-.robot {
-  position: fixed;
-  bottom: 0px;
-  right: 0px;
-  z-index: -1;
 }
 .btn_group {
   position: absolute;
