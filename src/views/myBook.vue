@@ -27,8 +27,11 @@
             :key="index"
             :class="{ placeholder: book.isPlaceholder }"
           >
-            <button v-if="!book.isPlaceholder" @click="viewFile(book)">
+            <!-- <button v-if="!book.isPlaceholder" @click="viewFile(book)">
               <p>{{ book.title || book.summary_text?.slice(0, 10) }}</p>
+            </button> -->
+            <button v-if="!book.isPlaceholder" @click="viewFile(book)">
+              <p>{{ book.title || "未命名對話" }}</p>
             </button>
           </div>
         </div>
@@ -150,7 +153,7 @@ onMounted(async () => {
 
 onMounted(async () => {
   try {
-    const res = await axios.get("http://localhost:5000/gpt/get_summaries", {
+    const res = await axios.get("http://localhost:5000/gpt/history", {
       headers: {
         Authorization: localStorage.getItem("token"),
       },
@@ -189,7 +192,7 @@ const viewFile = (book) => {
       query: {
         type: "summary",
         title: book.title,
-        content: book.summary_text,//這行一定要對應到
+        content: book.summary,//這行一定要對應到
       },
     });
     return;
