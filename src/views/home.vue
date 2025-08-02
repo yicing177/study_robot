@@ -128,9 +128,9 @@ onMounted(async () => {
 
     console.log("✅ 播放語音檔：", selectedGreeting, randomIndex);
     window.removeEventListener("click", handler); // 移除監聽器
+    gazeCheckEnabled.value = true;
   };
   window.addEventListener("click", handler);
-  gazeCheckEnabled.value = true;
 });
 
 const dialogWrapper = ref(null);
@@ -148,12 +148,15 @@ import { useWebGazer } from "@/composables/useWebGazer";
 const { isLooking, gazeX, gazeY } = useWebGazer(
   (data, timestamp) => {
     console.log("視線更新:", data.x.toFixed(2), data.y.toFixed(2));
+    if (!gazeCheckEnabled.value) return;
   },
   () => {
+    if (!gazeCheckEnabled.value) return;
     console.log("看不到你了");
     showToast("你是不是低頭了？讀書加油喔！");
   },
   () => {
+    if (!gazeCheckEnabled.value) return;
     console.log("抬頭啦");
     showToast("你回來啦～要我幫忙嗎？");
   }

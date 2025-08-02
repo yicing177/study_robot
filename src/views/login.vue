@@ -29,7 +29,7 @@
       </div>
       <div class="button">
         <button class="btn_singUp" @click="goToRegister">Sign Up</button>
-        <button class="btn_login" type="submit">Login in</button>
+        <button class="btn_login" type="submit">Log in</button>
       </div>
     </form>
   </div>
