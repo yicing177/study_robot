@@ -166,7 +166,7 @@ const handleSendWithText = async (text) => {
       user_id: user_id,//邱改的
     });
     const botReply = res.data.reply;
-    messages.value.push({ role: "bot", text: botReply }); // 顯示 GPT 回覆
+    messages.value.push({ role: "bot", text: botReply,conversation_id: res.data.conversation_id || null }); // 顯示 GPT 回覆
   } catch (err) {
     console.error("GPT 回覆失敗", err);
   }

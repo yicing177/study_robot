@@ -108,6 +108,7 @@ import { getAuth } from "firebase/auth";
 
 const auth = getAuth();
 const user_id = auth.currentUser?.uid;
+const currentConversationId = ref(null); //存conversation_id 
 
 const inputText = ref("");
 const emit = defineEmits(["updateMessages", "sendWithText"]);
@@ -221,10 +222,19 @@ const sendMessage = async () => {
   try {
     const res = await axios.post("http://localhost:5000/gpt/ask", {
       message: userMessage,
-      user_id: user_id,//邱改的
+      conversation_id: currentConversationId.value || null,
+      headers: {
+        Authorization: localStorage.getItem("token"),
+      }
     });
     const botReply = res.data.reply;
-    appendMessage({ role: "bot", text: botReply });
+    // ✅ 儲存新 conversation_id
+    if (res.data.conversation_id && res.data.conversation_id !== currentConversationId.value) {
+      currentConversationId.value = res.data.conversation_id;
+      console.log("✅ 已儲存 conversation_id:", currentConversationId.value);
+    }
+
+    appendMessage({ role: "bot", text: botReply,conversation_id: res.data.conversation_id || null});
     await speak(botReply);
   } catch (err) {
     props.messages.push({ role: "bot", text: "發生錯誤，請稍後再試。" });
@@ -243,7 +253,8 @@ const speak = async (text) => {
     );
     audio.play();
   } catch (err) {
-    console.error("語音播放失敗：", err);
+    //console.error("語音播放失敗：", err);
+    console.error("語音播放失敗", err.response?.data || err.message);
   }
 };
 
@@ -363,11 +374,30 @@ async function uploadAndSend(blob) {
   }
 }
 
+// if (!currentConversationId.value) {
+//   emit("updateMessages", { role: "bot", text: "⚠️ 尚未開始對話，無法總結。" });
+//   return;
+// }
+
 const handleSummary = async () => {
   try {
+    let convId = null;
+
+    if (typeof currentConversationId.value === 'string') {
+      convId = currentConversationId.value;
+    } else if (currentConversationId.value?.id) {
+      convId = currentConversationId.value.id;
+    }
+
+    console.log("送出的 conversation_id：", convId);
+    if (!convId) {
+      alert("❗請先建立對話或取得 conversation_id");
+      return;
+    }
     const res = await axios.post("http://localhost:5000/gpt/summarize", {
-      user_id: user_id,//邱改的
+      conversation_id: convId,
     });
+
     const summaryText = res.data.summary;
 
     // const newItem = {
@@ -380,6 +410,7 @@ const handleSummary = async () => {
   } catch (err) {
     console.error("總結失敗", err);
     emit("updateMessages", { role: "bot", text: "總結失敗，請稍後再試。" });
+    
   }
 };
 const confirmReset = async () => {
@@ -394,7 +425,7 @@ const confirmReset = async () => {
   try {
     await axios.post("http://localhost:5000/gpt/reset");
     emit("updateMessages", { role: "bot", text: "🆕 已開啟新的對話！" });
-
+    currentConversationId.value = null;
     // 這一段要通知父層清空 messages（額外 emit 一個事件）
     emit("resetMessages");
   } catch (err) {
