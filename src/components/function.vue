@@ -17,6 +17,10 @@
         <img src="../assets/logo/folder.svg" width="20" />
         教材整理
       </button>
+      <button class="history">
+        <img src="../assets/logo/history.svg" width="20" />
+        歷史對話
+      </button>
     </ul>
   </div>
 </template>
@@ -118,7 +122,8 @@ onUnmounted(() => {
 }
 .quiz,
 .calendar,
-.folder {
+.folder,
+.history {
   display: flex;
   align-items: center;
   justify-content: center;
