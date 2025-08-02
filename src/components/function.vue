@@ -1,5 +1,10 @@
 <template>
-  <button @click="toggleSidebar" class="function_btn" ref="buttonRef">
+  <button
+    v-show="isButtonVisible"
+    @click="toggleSidebar"
+    class="function_btn"
+    ref="buttonRef"
+  >
     <img src="../assets/logo/function.svg" width="80" height="80" />
   </button>
 
@@ -17,11 +22,20 @@
         <img src="../assets/logo/folder.svg" width="20" />
         教材整理
       </button>
-      <button class="history">
+      <button class="history" @click="historyListOpen">
         <img src="../assets/logo/history.svg" width="20" />
         歷史對話
       </button>
     </ul>
+  </div>
+  <!--這裡ID你可以再改 可能要和資料庫連 自動生成每份教材ID去抓-->
+  <!--之後顯示對話名稱的邏輯是用資料庫內的對話名字和ID對應-->
+  <!--你可以看我CHAT GPT第一個對話 我的想法在裡面-->
+  <div v-show="showHistory" class="historyList">
+    <button id="test0701">0701丘陵爬代國文筆記</button>
+    <button id="test0709">0709小豬豬吃飯筆記</button>
+    <button id="test0802">0802伊晴戀愛筆記</button>
+    <button class="closeHistory" @click="historyListClose">關閉</button>
   </div>
 </template>
 
@@ -30,11 +44,27 @@ import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 
 //控制sidebar狀態
+const isButtonVisible = ref(true);
 const router = useRouter();
 const route = useRoute();
 const isSidebarVisible = ref(false);
 const sidebarRef = ref(null);
 const buttonRef = ref(null);
+
+// 控制歷史對話列表
+const showHistory = ref(false);
+
+const historyListOpen = () => {
+  showHistory.value = true;
+  isSidebarVisible.value = false;
+  isButtonVisible.value = false;
+};
+
+const historyListClose = () => {
+  showHistory.value = false;
+  isSidebarVisible.value = true;
+  isButtonVisible.value = true;
+};
 
 // 切換功能列顯示狀態
 const toggleSidebar = () => {
@@ -117,7 +147,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
 }
-.function_btn:hover{
+.function_btn:hover {
   box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3); /* 懸停時增加陰影 */
 }
 .quiz,
@@ -131,8 +161,26 @@ onUnmounted(() => {
 }
 .calendar:hover,
 .folder:hover,
-.quiz:hover {
+.quiz:hover,
+.history:hover,
+.historyList button:hover {
   background-color: #e8e1dca2;
 }
 
+.historyList {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 20%;
+  position: absolute;
+  z-index: 100;
+  background-color: #c9b8ac;
+  gap: 10px;
+}
+
+.historyList button {
+  padding: 10px;
+  background-color: #e8e1dc;
+  border: 0px;
+}
 </style>
