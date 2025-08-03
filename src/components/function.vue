@@ -31,10 +31,14 @@
   <!--這裡ID你可以再改 可能要和資料庫連 自動生成每份教材ID去抓-->
   <!--之後顯示對話名稱的邏輯是用資料庫內的對話名字和ID對應-->
   <!--你可以看我CHAT GPT第一個對話 我的想法在裡面-->
-  <div v-show="showHistory" class="historyList">
-    <button id="test0701">0701丘陵爬代國文筆記</button>
-    <button id="test0709">0709小豬豬吃飯筆記</button>
-    <button id="test0802">0802伊晴戀愛筆記</button>
+  <div v-show="showHistory"  class="historyList">
+    <button
+      v-for="item in historyList"
+      :key="item.conversation_id"
+      @click="loadConversation(item.conversation_id, item.title)"
+    >
+      {{ item.title }}
+    </button>
     <button class="closeHistory" @click="historyListClose">關閉</button>
   </div>
 </template>
@@ -42,6 +46,8 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import axios from 'axios'
+import { getAuth} from "firebase/auth"
 
 //控制sidebar狀態
 const isButtonVisible = ref(true);
@@ -50,15 +56,11 @@ const route = useRoute();
 const isSidebarVisible = ref(false);
 const sidebarRef = ref(null);
 const buttonRef = ref(null);
+const currentTitle = ref('')
+const messages = ref([])
 
 // 控制歷史對話列表
 const showHistory = ref(false);
-
-const historyListOpen = () => {
-  showHistory.value = true;
-  isSidebarVisible.value = false;
-  isButtonVisible.value = false;
-};
 
 const historyListClose = () => {
   showHistory.value = false;
@@ -105,6 +107,37 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
 });
+
+
+const historyList = ref([])
+const historyListOpen = async () => {
+
+  showHistory.value = true;
+  isSidebarVisible.value = false;
+  isButtonVisible.value = false;
+
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) {
+    alert("請重新登入")
+    return
+  }
+
+  const token = await user.getIdToken()
+  try {
+    const res = await axios.get("http://localhost:5000/gpt/conversations", {
+      headers: {
+        Authorization: token
+      }
+    })
+    console.log("✅ 取得對話清單", res.data)
+    historyList.value = res.data.conversations || []
+  } catch (err) {
+    console.error("❌ 無法取得對話列表", err)
+  }
+}
+
+
 </script>
 
 <style scoped>
