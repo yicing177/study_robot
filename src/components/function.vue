@@ -41,6 +41,13 @@
     </button>
     <button class="closeHistory" @click="historyListClose">關閉</button>
   </div>
+  
+  <div class="message-panel" v-if="messages.length > 0">
+  <h3>{{ currentTitle }}</h3>
+  <div v-for="(msg, index) in messages" :key="index">
+    <strong>{{ msg.role }}：</strong> {{ msg.content }}
+  </div>
+  </div>
 </template>
 
 <script setup>
@@ -56,8 +63,7 @@ const route = useRoute();
 const isSidebarVisible = ref(false);
 const sidebarRef = ref(null);
 const buttonRef = ref(null);
-const currentTitle = ref('')
-const messages = ref([])
+
 
 // 控制歷史對話列表
 const showHistory = ref(false);
@@ -108,7 +114,7 @@ onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
 });
 
-
+//對話名稱顯示出來
 const historyList = ref([])
 const historyListOpen = async () => {
 
@@ -134,6 +140,38 @@ const historyListOpen = async () => {
     historyList.value = res.data.conversations || []
   } catch (err) {
     console.error("❌ 無法取得對話列表", err)
+  }
+}
+
+//對話內容顯示出來
+const messages = ref([])
+const currentTitle = ref('')
+
+const loadConversation = async (conversationId, title) => {
+  currentTitle.value = title
+
+  const user = getAuth().currentUser
+  if (!user) {
+    alert("請重新登入")
+    return
+  }
+
+  const token = await user.getIdToken()
+
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/get_conversation", {
+      conversation_id: conversationId
+    }, {
+      headers: {
+        Authorization: token
+      }
+  });
+
+
+    console.log("✅ 成功取得歷史對話內容", res.data)
+    messages.value = res.data.messages || []
+  } catch (err) {
+    console.error("❌ 無法取得歷史訊息", err)
   }
 }
 

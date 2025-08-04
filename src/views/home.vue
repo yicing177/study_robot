@@ -87,9 +87,25 @@ const addMessage = (msg) => {
   isChatOpen.value = true;
 };
 
+//我加了一個滾輪
 const setInputText = (msg) => {
   inputText.value = msg;
+
+  // ✅ 點下預設訊息後，自動展開聊天室
+  if (!isChatOpen.value) {
+    isChatOpen.value = true;
+  }
+
+  // ✅ 下一幀滾到底部（確保畫面渲染完再滾）
+  nextTick(() => {
+    if (dialogWrapper.value) {
+      dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
+    }
+  });
 };
+// const setInputText = (msg) => {
+//   inputText.value = msg;
+// };
 
 const greetingAudio = ref(null);
 const greetingAudios = [Greet1, Greet2, Greet3];
@@ -98,6 +114,8 @@ const robotRef = ref(null);
 const motionSet = (fn) => {
   fn();
 };
+
+
 onMounted(async () => {
   const randomIndex = Math.floor(Math.random() * greetingAudios.length);
   const selectedGreeting = greetingAudios[randomIndex];
@@ -184,6 +202,8 @@ onMounted(async () => {
   }, 7000);
 });
 */
+
+
 </script>
 
 <style scoped>
