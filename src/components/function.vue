@@ -31,7 +31,9 @@
   <!--這裡ID你可以再改 可能要和資料庫連 自動生成每份教材ID去抓-->
   <!--之後顯示對話名稱的邏輯是用資料庫內的對話名字和ID對應-->
   <!--你可以看我CHAT GPT第一個對話 我的想法在裡面-->
+
   <div v-show="showHistory"  class="historyList">
+
     <button
       v-for="item in historyList"
       :key="item.conversation_id"
@@ -41,8 +43,10 @@
     </button>
     <button class="closeHistory" @click="historyListClose">關閉</button>
   </div>
+
   <!-- 對話區（可繼續對話）-->
   <!-- 新的輸入區 -->
+  <!-- 上面這兩個我位置我好像擺錯幫我擺謝美女 -->
   <div class="custom-chat-input" v-if="currentConversationId">
     <input
       v-model="inputText"
@@ -51,12 +55,14 @@
       style="width: 300px; padding: 8px"
     />
     <button @click="sendMessage">送出</button>
+      <!-- 我加了這個! -->
+    <button @click="summarizeConversation">總結對話</button>
   </div>
 
   <div class="message-panel" v-if="messages.length > 0">
   <h3>{{ currentTitle }}</h3>
   <div v-for="(msg, index) in messages" :key="index">
-    <strong>{{ msg.role }}：</strong> {{ msg.content }}
+    <strong>{{ msg.role }}：</strong> {{ msg.text || msg.content }}
   </div>
   </div>
 </template>
@@ -237,6 +243,37 @@ const sendMessage = async () => {
     messages.value.push({ role: "bot", content: "發生錯誤，請稍後再試。" });
   }
 };
+
+//重點整理
+const summarizeConversation = async () => {
+  console.log("📌 summary 送出時的 conversation_id：", currentConversationId.value);
+
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/summarize", {
+      conversation_id: currentConversationId.value,
+    }, {
+      headers: {
+        Authorization: localStorage.getItem("token"),
+      },
+    });
+
+    const summary = res.data.summary;
+    console.log("✅ 摘要成功：");
+
+    messages.value.push({
+      role: "bot",
+      text: `✅ 摘要完成\n${summary}`
+    });
+
+  } catch (err) {
+    console.error("❌ 摘要失敗：", err.response?.data || err.message);
+    messages.value.push({
+      role: "bot",
+      text: "❌ 摘要失敗，請稍後再試。",
+    });
+  }
+};
+
 
 </script>
 
