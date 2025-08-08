@@ -23,11 +23,15 @@ import { ref, computed, watch, defineProps, defineEmits } from "vue";
 import Upload from "@/components/upload.vue";
 import axios from "axios";
 
-const emit = defineEmits(["updateMessages", "sendWithText"]);
+const emit = defineEmits(["updateMessages", "sendWithText", "updateConversationId"]);
 const props = defineProps({
   initialText: {
     type: String,
     default: "",
+  },
+  currentConversationId: {
+    type: String,
+    default: null,
   },
   handleSelfMessage: {
     type: Boolean,
@@ -66,28 +70,62 @@ watch(
     inputText.value = newVal;
   }
 );
-const sendMessage = async () => {
-  //如果輸入框是空的就結束
-  if (!inputText.value.trim()) return;
 
-  emit("sendWithText", inputText.value);
+//監聽
+watch(
+  () => props.currentConversationId,
+  (newVal) => {
+    console.log("👉 👉傳進來的 conversation_id:", newVal)
+    }
+    
+);
+      
+// const localConversationId = ref(props.currentConversationId);
+
+// watch(() => props.currentConversationId, (newVal) => {
+//   console.log("👉 👉 傳進來的 conversation_id:", newVal);
+//   localConversationId.value = newVal;
+// });
+const localConversationId = computed(() => props.currentConversationId);
+
+
+const sendMessage = async () => {
+  if (!inputText.value.trim()) return;
+  console.log("👉 傳進來的 conversation_id：", props.currentConversationId);
   const userMessage = inputText.value;
-  inputText.value = ""; // 清空輸入框
+  inputText.value = "";
   appendMessage({ role: "user", text: userMessage });
 
   try {
-    const res = await axios.post("http://localhost:5000/gpt/ask", {
-      message: userMessage,
-      user_id: "test_user",
-    });
+    let res;
 
-    const botReply = res.data.reply;
-    appendMessage({ role: "bot", text: botReply });
-    await speak(botReply);
+    if (!localConversationId.value) {
+      // 沒有 conversation_id，使用 start_conversation 建立新對話
+      res = await axios.post("http://localhost:5000/gpt/start_conversation", {
+        initial_message: userMessage,
+      });
+
+      console.log("🚀 新 conversation_id 要傳給父層：", res.data.conversation_id);
+      emit("updateConversationId", res.data.conversation_id); // ✅ 傳回新 conversation_id
+      localConversationId.value = res.data.conversation_id;  // ✅ 更新本地值，供下一輪使用
+    } else {
+      // 已有 conversation_id，使用 ask 延續對話
+      res = await axios.post("http://localhost:5000/gpt/ask", {
+        message: userMessage,
+        conversation_id: localConversationId.value,  // ✅ 用自己的
+      });
+    }
+
+    // 無論新建還是延續，都加入機器人回覆
+    console.log("🧠 加入 bot 回覆：", res.data.reply, typeof res.data.reply);
+    appendMessage({ role: "bot", text: res.data.reply });
+
   } catch (err) {
     console.error("GPT 回覆失敗", err);
   }
 };
+
+
 //機器人語音回復
 const speak = async (text) => {
   try {
@@ -219,8 +257,8 @@ async function uploadAndSend(blob) {
 
     const botReply = gptRes.data.reply;
 
-    appendMessage({ role: "bot", text: botReply.reply });
-    await speak(botReply.reply);
+    appendMessage({ role: "bot", text: botReply });
+    await speak(botReply);
   } catch (err) {
     console.error("語音處理錯誤", err);
     appendMessage({ role: "bot", text: "語音處理失敗，請稍後再試。" });

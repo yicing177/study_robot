@@ -30,11 +30,15 @@
           />
           <div class="text">{{ msg.text }}</div>
         </div>
+        <!-- 我加了這個! -->
+        <button @click="summarizeConversation">總結對話</button>
       </div>
       <chat_bottom
         :initialText="inputText"
         :messages="messages"
         :handleSelfMessage="true"
+        :currentConversationId="currentConversationId"
+        @updateConversationId="handleNewConversationId"
         @updateMessages="addMessage"
       />
       <button class="toggle_btn" @click="isChatOpen = !isChatOpen">
@@ -57,6 +61,8 @@ import userAvatar from "@/assets/image/avatar_user.svg";
 import Greet1 from "@/assets/audio/welcome_01.wav";
 import Greet2 from "@/assets/audio/welcome_02.wav";
 import Greet3 from "@/assets/audio/welcome_03.wav";
+import axios from "axios";
+
 
 const backgroundStyle = ref({
   backgroundImage: `url(${roomImage})`, // 使用導入的圖片路徑
@@ -106,6 +112,11 @@ const setInputText = (msg) => {
 // const setInputText = (msg) => {
 //   inputText.value = msg;
 // };
+
+const currentConversationId = ref(null);
+const handleNewConversationId = (id) => {
+  currentConversationId.value = id;
+};
 
 const greetingAudio = ref(null);
 const greetingAudios = [Greet1, Greet2, Greet3];
@@ -179,6 +190,37 @@ const { isLooking, gazeX, gazeY } = useWebGazer(
     showToast("你回來啦～要我幫忙嗎？");
   }
 );
+
+//重點整理
+const summarizeConversation = async () => {
+  console.log("📌 summary 送出時的 conversation_id：", currentConversationId.value);
+
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/summarize", {
+      conversation_id: currentConversationId.value,
+    }, {
+      headers: {
+        Authorization: localStorage.getItem("token"),
+      },
+    });
+
+    const summary = res.data.summary;
+    console.log("✅ 摘要成功：");
+
+    messages.value.push({
+      role: "bot",
+      text: `✅ 摘要完成`
+    });
+
+  } catch (err) {
+    console.error("❌ 摘要失敗：", err.response?.data || err.message);
+    messages.value.push({
+      role: "bot",
+      text: "❌ 摘要失敗，請稍後再試。",
+    });
+  }
+};
+
 
 /*
 畫面載入後先說幾句話，延後啟用 gaze 偵測

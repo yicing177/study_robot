@@ -6,76 +6,79 @@
       <button class="reset" @click="confirmReset">開新對話</button>
     </div>
     <div class="chat_right_dialog" ref="dialogWrapper">
-      <div
-        v-for="(msg, i) in displayedMessages"
-        :key="i"
-        :class="['bubble', msg.role]"
-      >
-        <!-- 顯示訊息 -->
-        <template v-if="!msg.type || msg.type === 'text'">
-          {{ msg.text }}
-        </template>
+      <template v-for="(msg, i) in displayedMessages" :key="i">
+      <!-- 顯示訊息 -->
+      <div v-if="!msg.type || msg.type === 'text'" :class="['bubble', typeof msg.role === 'string' ? msg.role : 'bot']">
+        <span>
+        {{
+          typeof msg.text === 'string'
+          ? msg.text
+          : (msg.text && typeof msg.text === 'object' && 'reply' in msg.text)
+            ? msg.text.reply
+            : JSON.stringify(msg.text)
+        }}
+        </span>
+      </div>
+      
+      <!-- 顯示難度選擇按鈕 -->
+      <div v-else-if="msg.type === 'buttons'" :class="['bubble', msg.role]">
+        <div>{{ msg.text }}</div>
+        <div class="button_group">
+          <button
+            v-for="btn in msg.buttons"
+            :key="btn"
+            class="difficulty_button"
+            @click="selectDifficulty(btn)"
+          >
+            {{ btn }}
+          </button>
+        </div>
+      </div>
 
-        <!-- 顯示難度選擇按鈕 -->
-        <template v-else-if="msg.type === 'buttons'">
+      <!-- 顯示題數輸入框 -->
+      <div v-else-if="msg.type === 'input'" :class="['bubble', msg.role]">
+        <div class="num">
           <div>{{ msg.text }}</div>
-          <div class="button_group">
-            <button
-              v-for="btn in msg.buttons"
-              :key="btn"
-              class="difficulty_button"
-              @click="selectDifficulty(btn)"
+          <input
+            class="num_box"
+            type="number"
+            v-model="quizCount"
+            placeholder="請輸入題數"
+          />
+          <button class="num_btn" @click="submitQuizCount">確認</button>
+        </div>
+      </div>
+
+      <!-- 顯示題目+選項 -->
+      <div v-else-if="msg.type === 'quiz'" :class="['bubble', msg.role]">
+        <div class="quiz-question">
+          <p>{{ msg.index + 1 }}. {{ msg.question }}</p>
+          <div v-for="opt in msg.options" :key="opt">
+            <label
+              class="quiz-option"
+              :class="{ selected: userAnswers[msg.index] === opt }"
             >
-              {{ btn }}
-            </button>
+              <input
+                type="radio"
+                :name="'question_' + msg.index"
+                :value="opt"
+                v-model="userAnswers[msg.index]"
+              />
+              {{ opt }}
+            </label>
           </div>
-        </template>
-
-        <!-- 顯示題數輸入框 -->
-        <template v-else-if="msg.type === 'input'">
-          <div class="num">
-            <div>{{ msg.text }}</div>
-            <input
-              class="num_box"
-              type="number"
-              v-model="quizCount"
-              placeholder="請輸入題數"
-            />
-            <button class="num_btn" @click="submitQuizCount">確認</button>
-          </div>
-        </template>
-
-        <!-- 顯示題目+選項 -->
-        <template v-else-if="msg.type === 'quiz'">
-          <div class="quiz-question">
-            <p>{{ msg.index + 1 }}. {{ msg.question }}</p>
-            <div v-for="opt in msg.options" :key="opt">
-              <label
-                class="quiz-option"
-                :class="{ selected: userAnswers[msg.index] === opt }"
-              >
-                <input
-                  type="radio"
-                  :name="'question_' + msg.index"
-                  :value="opt"
-                  v-model="userAnswers[msg.index]"
-                />
-                {{ opt }}
-              </label>
-            </div>
-          </div>
-        </template>
+        </div>
       </div>
+    </template>
 
-      <!-- 顯示送出按鈕 -->
-      <div
-        v-if="quizSubmitted === false && quizQuestions.length > 0"
-        class="submit_wrapper"
-      >
-        <button class="submit_button" @click="submitAnswers">送出答案</button>
-      </div>
+    <!-- 顯示送出按鈕 -->
+    <div
+      v-if="quizSubmitted === false && quizQuestions.length > 0"
+      class="submit_wrapper"
+    >
+      <button class="submit_button" @click="submitAnswers">送出答案</button>
     </div>
-
+  </div>
     <!-- 輸入框 -->
     <div v-if="isRecording" class="recording_hint">
       🎤 錄音中... 再次點擊語音按鈕以停止
@@ -108,10 +111,10 @@ import { getAuth } from "firebase/auth";
 
 const auth = getAuth();
 const user_id = auth.currentUser?.uid;
-const currentConversationId = ref(null); //存conversation_id 
+
 
 const inputText = ref("");
-const emit = defineEmits(["updateMessages", "sendWithText"]);
+const emit = defineEmits(["updateMessages", "sendWithText", "updateConversationId", "resetMessages"]);
 const props = defineProps({
   initialText: String,
   initialMessages: {
@@ -120,16 +123,49 @@ const props = defineProps({
   },
   messages: {
     type: Array,
-    required: true, // ✅ 改為必填，避免 fallback 到空陣列
+    required: true,
+  },
+  currentConversationId: {
+    type: String,
+    default: null,
   },
 });
+//檢查哪邊沒傳進來
+watch(
+  () => props.currentConversationId,
+  (newVal) => {
+    console.log("👀 chat_right 收到 conversation_id:", newVal);
+  },
+  { immediate: true }
+);
 
 //處理本地對話
 const localMessages = ref([]);
 const isUsingLocal = computed(() => !props.messages);
-const displayedMessages = computed(() =>
-  isUsingLocal.value ? localMessages.value : props.messages
-);
+
+const displayedMessages = computed(() => {
+  const messages = isUsingLocal.value ? localMessages.value : props.messages;
+
+  return messages.map((msg) => {
+    // 如果是 bot 且 msg.text 是 JSON 字串 → 嘗試解析
+    if (
+      msg.role === "bot" &&
+      typeof msg.text === "string" &&
+      msg.text.trim().startsWith("{")
+    ) {
+      try {
+        const parsed = JSON.parse(msg.text);
+        console.log("✅ 第", index, "個訊息成功 parse：", parsed); // ← 看這行有沒有印出來
+        return { ...msg, text: parsed };
+      } catch (e) {
+        console.warn("❌ JSON.parse 失敗：", msg.text);
+        return msg;
+      }
+    }
+    return msg;
+  });
+});
+
 function appendMessage(message) {
   if (props.messages) {
     emit("updateMessages", message); // 傳給父層
@@ -163,8 +199,21 @@ const submitQuizCount = async () => {
       num_questions: num,
     });
 
+
+
+
+    console.log("✅ API 回傳完整內容：", res.data);
     const quiz = res.data.quiz; // ✅ 這邊定義 quiz
+    const message = res.data.message || "";
     quizQuestions.value = quiz;
+
+    if (!quiz || quiz.length === 0) {
+      props.messages.push({
+      role: "bot",
+      text: `⚠️ 出題失敗：${message || "請稍後再試。"}`,
+    });
+    return;
+    }
 
     quiz.forEach((q, idx) => {
       appendMessage({
@@ -213,27 +262,54 @@ const submitAnswers = async () => {
   }
 };
 
+const ensureConversationId = async (initialMessage = "我想開始對話") => {
+  let conversationId = props.currentConversationId;
+
+  if (!conversationId) {
+    const res = await axios.post("http://localhost:5000/gpt/start_conversation", {
+      initial_message: initialMessage,
+    }, {
+      headers: {
+        Authorization: localStorage.getItem("token"),
+      }
+    });
+
+    conversationId = res.data.conversation_id;
+    emit("updateConversationId", conversationId);
+    console.log("📌 自動建立 conversation_id：", conversationId);
+  }
+
+  return conversationId;
+};
+
 const sendMessage = async () => {
   if (!inputText.value.trim()) return;
   const userMessage = inputText.value;
   inputText.value = "";
   appendMessage({ role: "user", text: userMessage });
 
+  console.log("📤 準備送出訊息，conversation_id 是：", props.currentConversationId);
+  
+  let conversationId = await ensureConversationId(userMessage);
   try {
     const res = await axios.post("http://localhost:5000/gpt/ask", {
-      message: userMessage,
-      conversation_id: currentConversationId.value || null,
-      headers: {
-        Authorization: localStorage.getItem("token"),
+        message: userMessage,
+        conversation_id: conversationId,
+      },
+      {
+        headers: {
+          Authorization: localStorage.getItem("token"),
+        },
       }
-    });
+    );
+      
     const botReply = res.data.reply;
-    // ✅ 儲存新 conversation_id
-    if (res.data.conversation_id && res.data.conversation_id !== currentConversationId.value) {
-      currentConversationId.value = res.data.conversation_id;
-      console.log("✅ 已儲存 conversation_id:", currentConversationId.value);
+    // ✅ 若 response 又回傳新的 conversation_id，更新給父層
+    if (res.data.conversation_id && res.data.conversation_id !== conversationId) {
+      emit("updateConversationId", res.data.conversation_id);  // ✅ 正確使用 emit
+      console.log("✅ 更新 conversation_id:", res.data.conversation_id);
     }
-
+    
     appendMessage({ role: "bot", text: botReply,conversation_id: res.data.conversation_id || null});
     await speak(botReply);
   } catch (err) {
@@ -381,38 +457,21 @@ async function uploadAndSend(blob) {
 
 const handleSummary = async () => {
   try {
-    let convId = null;
+    const convId = await ensureConversationId("我想進行總結");
 
-    if (typeof currentConversationId.value === 'string') {
-      convId = currentConversationId.value;
-    } else if (currentConversationId.value?.id) {
-      convId = currentConversationId.value.id;
-    }
-
-    console.log("送出的 conversation_id：", convId);
-    if (!convId) {
-      alert("❗請先建立對話或取得 conversation_id");
-      return;
-    }
     const res = await axios.post("http://localhost:5000/gpt/summarize", {
       conversation_id: convId,
     });
 
     const summaryText = res.data.summary;
 
-    // const newItem = {
-    //   name: new Date().toLocaleDateString() + " 對話總結",
-    //   content: summaryText,
-    //   type: "text",
-    // };
-
     emit("updateMessages", { role: "bot", text: "✅ 已加入重點整理！" });
   } catch (err) {
     console.error("總結失敗", err);
     emit("updateMessages", { role: "bot", text: "總結失敗，請稍後再試。" });
-    
   }
 };
+
 const confirmReset = async () => {
   const wantsSummary = window.confirm(
     "你想在開始新對話前，先總結目前的對話紀錄嗎？"
@@ -421,11 +480,11 @@ const confirmReset = async () => {
   if (wantsSummary) {
     await handleSummary(); // 呼叫總結函式
   }
-
+  const convId = await ensureConversationId("我想進行總結");
   try {
     await axios.post("http://localhost:5000/gpt/reset");
     emit("updateMessages", { role: "bot", text: "🆕 已開啟新的對話！" });
-    currentConversationId.value = null;
+    emit("updateConversationId", null); // ✅ 讓父層把 currentConversationId 設成 null
     // 這一段要通知父層清空 messages（額外 emit 一個事件）
     emit("resetMessages");
   } catch (err) {

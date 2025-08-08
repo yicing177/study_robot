@@ -7,6 +7,8 @@
       <chat_right
         :initialText="initialText"
         :messages="messages"
+        :currentConversationId="currentConversationId" 
+        @updateConversationId="handleConversationIdUpdate"
         @updateMessages="addMessage"
       />
     </div>
@@ -15,7 +17,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted , watch} from "vue";
 import Robot from "@/components/Robot.vue";
 import chat_right from "@/components/chat_right.vue";
 import { useRoute } from "vue-router";
@@ -43,6 +45,14 @@ messages.value.push(...quizStarter); // ✅ 初始訊息丟進 messages
 const greetingAudio = ref(null);
 const greetingAudios = [Greet1, Greet2, Greet3];
 
+const currentConversationId = ref(null); // 加這行
+const handleConversationIdUpdate = (id) => {
+  console.log("✅ quiz.vue 收到 conversation_id：", id);
+  currentConversationId.value = id;
+};
+watch(currentConversationId, (newVal) => {
+  console.log("📌 quiz.vue 中的 conversation_id 變成：", newVal);
+});
 onMounted(() => {
   const handler = () => {
     if (event.target.closest(".elf-button")) {

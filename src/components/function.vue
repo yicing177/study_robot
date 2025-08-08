@@ -41,7 +41,18 @@
     </button>
     <button class="closeHistory" @click="historyListClose">關閉</button>
   </div>
-  
+  <!-- 對話區（可繼續對話）-->
+  <!-- 新的輸入區 -->
+  <div class="custom-chat-input" v-if="currentConversationId">
+    <input
+      v-model="inputText"
+      @keyup.enter="sendMessage"
+      placeholder="輸入訊息..."
+      style="width: 300px; padding: 8px"
+    />
+    <button @click="sendMessage">送出</button>
+  </div>
+
   <div class="message-panel" v-if="messages.length > 0">
   <h3>{{ currentTitle }}</h3>
   <div v-for="(msg, index) in messages" :key="index">
@@ -53,8 +64,11 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import axios from 'axios'
-import { getAuth} from "firebase/auth"
+import axios from 'axios';
+import { getAuth} from "firebase/auth";
+
+
+
 
 //控制sidebar狀態
 const isButtonVisible = ref(true);
@@ -63,7 +77,7 @@ const route = useRoute();
 const isSidebarVisible = ref(false);
 const sidebarRef = ref(null);
 const buttonRef = ref(null);
-
+const currentConversationId = ref(null);
 
 // 控制歷史對話列表
 const showHistory = ref(false);
@@ -144,10 +158,19 @@ const historyListOpen = async () => {
 }
 
 //對話內容顯示出來
-const messages = ref([])
+const messages = ref([]);
 const currentTitle = ref('')
+const selectedHistory = ref(null); // 用來記住目前開啟的 conversationId
 
+ // 我先設定點開現在的項目在案一次就是關閉
 const loadConversation = async (conversationId, title) => {
+  
+  if (selectedHistory.value === conversationId) {
+    selectedHistory.value = null;
+    currentTitle.value = "";
+    messages.value = [];
+    return;
+  }
   currentTitle.value = title
 
   const user = getAuth().currentUser
@@ -170,11 +193,50 @@ const loadConversation = async (conversationId, title) => {
 
     console.log("✅ 成功取得歷史對話內容", res.data)
     messages.value = res.data.messages || []
+    // 加這行 ✅：更新目前對話 ID，才能讓 ChatBottom 正常送出
+    currentConversationId.value = conversationId;
+    selectedHistory.value = conversationId; // 設為當前開啟的項目
   } catch (err) {
     console.error("❌ 無法取得歷史訊息", err)
   }
 }
 
+//接續歷史對話
+// script setup 裡加上這些
+const inputText = ref("")
+
+const sendMessage = async () => {
+  if (!inputText.value.trim()) return;
+
+  const userMessage = inputText.value;
+  inputText.value = "";
+
+  messages.value.push({ role: "user", content: userMessage });
+
+  const user = getAuth().currentUser;
+  if (!user) {
+    alert("請重新登入");
+    return;
+  }
+  const token = await user.getIdToken();
+
+  try {
+    const res = await axios.post("http://localhost:5000/gpt/ask", {
+      message: userMessage,
+      conversation_id: currentConversationId.value,  // ✅ 這邊接續歷史對話
+    }, {
+      headers: {
+        Authorization: token,
+      },
+    });
+
+    messages.value.push({ role: "bot", content: res.data.reply });
+
+  } catch (err) {
+    console.error("❌ GPT 回覆失敗", err);
+    messages.value.push({ role: "bot", content: "發生錯誤，請稍後再試。" });
+  }
+};
 
 </script>
 
