@@ -70,17 +70,21 @@
         :key="chatKey"
         :initialText="initialRightInput"
         :messages="messages"
+        :currentConversationId="currentConversationId"
         @updateMessages="addMessage"
         @resetMessages="resetMessages"
+        @updateConversationId="handleUpdateConversationId"
       />
     </div>
     <div v-if="!showChatRight" class="chat_bottom">
       <ChatBottom
         :key="chatKey"
         :messages="messages"
+        :currentConversationId="currentConversationId"                     
         @show="chatRightOpen"
         @updateMessages="addMessage"
-        @sendWithText="handleSendWithText"
+        @sendWithText="handleSendWithText"   
+        @updateConversationId="handleUpdateConversationId"
         v-if="!showChatRight"
       />
     </div>
@@ -97,6 +101,7 @@ import Function from "@/components/function.vue";
 import Music from "../components/music.vue";
 import axios from "axios";
 
+
 const route = useRoute();
 const showPreview = ref(false);
 const fileURL = computed(() => route.query.file || "");
@@ -105,9 +110,19 @@ const pdfSrc = ref("");
 //PDF檔案的總頁數
 const totalPages = ref(0);
 const currentPages = ref(1);
-const messages = ref([]);
 const showChatRight = ref(false);
 const initialRightInput = ref("");
+const currentConversationId = ref(null); // ✅ 宣告 reactive 狀態
+const messages = ref([]);
+
+watch(currentConversationId, (newVal) => {
+  console.log("📌 file.vue 中 currentConversationId 改變為：", newVal);
+});
+
+const handleUpdateConversationId = (id) => {
+  console.log("🟢 收到新 conversation_id：", id);
+  currentConversationId.value = id;
+};
 
 const user_id = localStorage.getItem("user_id"); // ✅ 加這行
 
@@ -121,6 +136,7 @@ const props = defineProps({
     default: "",
   },
 });
+
 
 onMounted(() => {
   if (fileType === "application/pdf") {
