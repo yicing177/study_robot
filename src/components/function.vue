@@ -28,12 +28,8 @@
       </button>
     </ul>
   </div>
-  <!--這裡ID你可以再改 可能要和資料庫連 自動生成每份教材ID去抓-->
-  <!--之後顯示對話名稱的邏輯是用資料庫內的對話名字和ID對應-->
-  <!--你可以看我CHAT GPT第一個對話 我的想法在裡面-->
-
-  <div v-show="showHistory"  class="historyList">
-
+  <div v-show="showHistory" class="historyList">
+    <button class="closeHistory" @click="historyListClose">關閉</button>
     <button
       v-for="item in historyList"
       :key="item.conversation_id"
@@ -41,12 +37,11 @@
     >
       {{ item.title }}
     </button>
-    <button class="closeHistory" @click="historyListClose">關閉</button>
   </div>
 
   <!-- 對話區（可繼續對話）-->
   <!-- 新的輸入區 -->
-  <!-- 上面這兩個我位置我好像擺錯幫我擺謝美女 -->
+  <!-- 上面這兩個我位置我好像擺錯幫我擺謝美女 
   <div class="custom-chat-input" v-if="currentConversationId">
     <input
       v-model="inputText"
@@ -55,26 +50,23 @@
       style="width: 300px; padding: 8px"
     />
     <button @click="sendMessage">送出</button>
-      <!-- 我加了這個! -->
+    我加了這個! 
     <button @click="summarizeConversation">總結對話</button>
-  </div>
+  </div>-->
 
   <div class="message-panel" v-if="messages.length > 0">
-  <h3>{{ currentTitle }}</h3>
-  <div v-for="(msg, index) in messages" :key="index">
-    <strong>{{ msg.role }}：</strong> {{ msg.text || msg.content }}
-  </div>
+    <h3>{{ currentTitle }}</h3>
+    <div v-for="(msg, index) in messages" :key="index">
+      <strong>{{ msg.role }}：</strong> {{ msg.text || msg.content }}
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { ref, watch, onMounted, onUnmounted, defineEmits } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import axios from 'axios';
-import { getAuth} from "firebase/auth";
-
-
-
+import axios from "axios";
+import { getAuth } from "firebase/auth";
 
 //控制sidebar狀態
 const isButtonVisible = ref(true);
@@ -135,145 +127,80 @@ onUnmounted(() => {
 });
 
 //對話名稱顯示出來
-const historyList = ref([])
+const historyList = ref([]);
 const historyListOpen = async () => {
-
   showHistory.value = true;
   isSidebarVisible.value = false;
   isButtonVisible.value = false;
 
-  const auth = getAuth()
-  const user = auth.currentUser
-  if (!user) {
-    alert("請重新登入")
-    return
-  }
-
-  const token = await user.getIdToken()
-  try {
-    const res = await axios.get("http://localhost:5000/gpt/conversations", {
-      headers: {
-        Authorization: token
-      }
-    })
-    console.log("✅ 取得對話清單", res.data)
-    historyList.value = res.data.conversations || []
-  } catch (err) {
-    console.error("❌ 無法取得對話列表", err)
-  }
-}
-
-//對話內容顯示出來
-const messages = ref([]);
-const currentTitle = ref('')
-const selectedHistory = ref(null); // 用來記住目前開啟的 conversationId
-
- // 我先設定點開現在的項目在案一次就是關閉
-const loadConversation = async (conversationId, title) => {
-  
-  if (selectedHistory.value === conversationId) {
-    selectedHistory.value = null;
-    currentTitle.value = "";
-    messages.value = [];
-    return;
-  }
-  currentTitle.value = title
-
-  const user = getAuth().currentUser
-  if (!user) {
-    alert("請重新登入")
-    return
-  }
-
-  const token = await user.getIdToken()
-
-  try {
-    const res = await axios.post("http://localhost:5000/gpt/get_conversation", {
-      conversation_id: conversationId
-    }, {
-      headers: {
-        Authorization: token
-      }
-  });
-
-
-    console.log("✅ 成功取得歷史對話內容", res.data)
-    messages.value = res.data.messages || []
-    // 加這行 ✅：更新目前對話 ID，才能讓 ChatBottom 正常送出
-    currentConversationId.value = conversationId;
-    selectedHistory.value = conversationId; // 設為當前開啟的項目
-  } catch (err) {
-    console.error("❌ 無法取得歷史訊息", err)
-  }
-}
-
-//接續歷史對話
-// script setup 裡加上這些
-const inputText = ref("")
-
-const sendMessage = async () => {
-  if (!inputText.value.trim()) return;
-
-  const userMessage = inputText.value;
-  inputText.value = "";
-
-  messages.value.push({ role: "user", content: userMessage });
-
-  const user = getAuth().currentUser;
+  const auth = getAuth();
+  const user = auth.currentUser;
   if (!user) {
     alert("請重新登入");
     return;
   }
-  const token = await user.getIdToken();
 
+  const token = await user.getIdToken();
   try {
-    const res = await axios.post("http://localhost:5000/gpt/ask", {
-      message: userMessage,
-      conversation_id: currentConversationId.value,  // ✅ 這邊接續歷史對話
-    }, {
+    const res = await axios.get("http://localhost:5000/gpt/conversations", {
       headers: {
         Authorization: token,
       },
     });
-
-    messages.value.push({ role: "bot", content: res.data.reply });
-
+    console.log("✅ 取得對話清單", res.data);
+    historyList.value = res.data.conversations || [];
   } catch (err) {
-    console.error("❌ GPT 回覆失敗", err);
-    messages.value.push({ role: "bot", content: "發生錯誤，請稍後再試。" });
+    console.error("❌ 無法取得對話列表", err);
   }
 };
 
-//重點整理
-const summarizeConversation = async () => {
-  console.log("📌 summary 送出時的 conversation_id：", currentConversationId.value);
+//對話內容顯示出來
+const messages = ref([]);
+const currentTitle = ref("");
+const selectedHistory = ref(null); // 用來記住目前開啟的 conversationId
+
+// ✅ 讀取某筆對話後，上拋給父層（不要只自己顯示）
+const emit = defineEmits(["openConversation"]);
+const loadConversation = async (conversationId, title) => {
+  if (selectedHistory.value === conversationId) {
+    selectedHistory.value = null;
+    return;
+  }
+  currentTitle.value = title;
+
+  const user = getAuth().currentUser;
+  if (!user) return alert("請重新登入");
+  const token = await user.getIdToken();
 
   try {
-    const res = await axios.post("http://localhost:5000/gpt/summarize", {
-      conversation_id: currentConversationId.value,
-    }, {
-      headers: {
-        Authorization: localStorage.getItem("token"),
-      },
+    const res = await axios.post(
+      "http://localhost:5000/gpt/get_conversation",
+      { conversation_id: conversationId },
+      { headers: { Authorization: token } }
+    );
+
+    const hist = (res.data.messages || []).map(m => ({
+      role: m.role,
+      text: m.text || m.content,   // 後端欄位是 content
+      timestamp: m.timestamp
+    }));
+
+    // ✅ 把「選到的對話」交給父層處理
+    emit("openConversation", {
+      conversationId,
+      title: res.data.title || title || "未命名對話",
+      messages: hist,
     });
 
-    const summary = res.data.summary;
-    console.log("✅ 摘要成功：");
+    selectedHistory.value = conversationId;
 
-    messages.value.push({
-      role: "bot",
-      text: `✅ 摘要完成\n${summary}`
-    });
+    sessionStorage.setItem("conversation_id", conversationId);
+    sessionStorage.setItem("conversation_title", res.data.title || title || "未命名對話");
 
   } catch (err) {
-    console.error("❌ 摘要失敗：", err.response?.data || err.message);
-    messages.value.push({
-      role: "bot",
-      text: "❌ 摘要失敗，請稍後再試。",
-    });
+    console.error("❌ 無法取得歷史訊息", err);
   }
 };
-
 
 </script>
 
@@ -340,17 +267,40 @@ const summarizeConversation = async () => {
 .historyList {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: -webkit-fill-available;
   width: 20%;
-  position: absolute;
+  position: fixed;
   z-index: 100;
   background-color: #c9b8ac;
-  gap: 10px;
+  gap: 20px;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  padding: 10px;
 }
 
 .historyList button {
   padding: 10px;
   background-color: #e8e1dc;
   border: 0px;
+}
+
+/* 整條滾動軸 */
+.historyList::-webkit-scrollbar {
+  width: 10px;  
+}
+
+/* 軌道（背景） */
+.historyList::-webkit-scrollbar-track {
+  background: #e8e1dc;  
+  border-radius: 5px;
+}
+
+/* 捲軸滑塊 */
+.historyList::-webkit-scrollbar-thumb {
+  background-color: #8a786f; 
+  border-radius: 10px;
+}
+.historyList::-webkit-scrollbar-thumb:hover {
+  background-color: #5c4438;
 }
 </style>

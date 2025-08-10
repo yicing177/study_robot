@@ -7,11 +7,16 @@
       <div class="upload_btn">
         <Upload />
       </div>
-      <input v-model="inputText" placeholder="輸入您的問題..." id="box" />
+      <input
+        v-model="inputText"
+        placeholder="輸入您的問題..."
+        id="box"
+        @keyup.enter="sendMessage()"
+      />
       <div class="voice_btn" @click="toggleRecording">
         <img src="../assets/logo/voice.svg" width="40" height="40" />
       </div>
-      <button class="send_btn" @click="sendMessage">
+      <button class="send_btn" @click="sendMessage()">
         <img src="../assets/logo/send.svg" width="40" height="40" />
       </button>
     </div>
@@ -22,109 +27,112 @@
 import { ref, computed, watch, defineProps, defineEmits } from "vue";
 import Upload from "@/components/upload.vue";
 import axios from "axios";
+import { getAuth } from "firebase/auth";
 
-const emit = defineEmits(["updateMessages", "sendWithText", "updateConversationId"]);
+const emit = defineEmits([
+  "updateMessages",
+  "updateConversationId",
+  "clearInitial",
+  "show",
+]);
 const props = defineProps({
-  initialText: {
-    type: String,
-    default: "",
-  },
-  currentConversationId: {
-    type: String,
-    default: null,
-  },
-  handleSelfMessage: {
-    type: Boolean,
-    default: false,
-  },
-  messages: {
-    type: Array,
-    default: null, // ✅ 這個要加，讓它可以正確是 null
-  },
+  initialText: { type: String, default: "" },
+  currentConversationId: { type: String, default: null },
+  handleSelfMessage: { type: Boolean, default: false },
+  messages: { type: Array, default: null },
 });
 
-//處理本地對話
+const auth = getAuth();
+const user_id = auth.currentUser?.uid;
+
+// ====== 訊息交給父層（若父層沒傳 messages，才用本地備援）======
 const localMessages = ref([]);
 const isUsingLocal = computed(
   () => props.messages === undefined || props.messages === null
 );
-
 const displayedMessages = computed(() =>
   isUsingLocal.value ? localMessages.value : props.messages
 );
 function appendMessage(message) {
-  if (isUsingLocal.value) {
-    localMessages.value.push(message);
-    console.log("[local] 加入訊息：", message);
-  } else {
-    console.log("[emit] 要 emit 給父層：", message);
-    emit("updateMessages", message);
-  }
+  if (isUsingLocal.value) localMessages.value.push(message);
+  else emit("updateMessages", message);
 }
 
+// ====== 輸入框 & initialText 自動送出 ======
 const inputText = ref(props.initialText);
-// 如果 props.initialText 改變 → 更新 inputText
 watch(
   () => props.initialText,
-  (newVal) => {
-    inputText.value = newVal;
+  (v) => (inputText.value = v)
+);
+
+// ✅ initialText 改變 → 自動送一次，並請父層清空（避免重複觸發）
+watch(
+  () => props.initialText,
+  async (val) => {
+    if (typeof val !== "string" || !val.trim()) return;
+    emit("show"); // 打開右側
+    await sendMessage(val);
+    emit("clearInitial");
   }
 );
 
-//監聽
-watch(
-  () => props.currentConversationId,
-  (newVal) => {
-    console.log("👉 👉傳進來的 conversation_id:", newVal)
-    }
-    
-);
-      
-// const localConversationId = ref(props.currentConversationId);
+// ====== 發送訊息（自己也能送，顯示在首頁）======
+const sending = ref(false);
+const sendMessage = async (forcedText) => {
+  if (sending.value) return;
+  const raw =
+    typeof forcedText === "string" ? forcedText : inputText.value ?? "";
+  const text = String(raw).trim();
+  if (!text) return;
 
-// watch(() => props.currentConversationId, (newVal) => {
-//   console.log("👉 👉 傳進來的 conversation_id:", newVal);
-//   localConversationId.value = newVal;
-// });
-const localConversationId = computed(() => props.currentConversationId);
-
-
-const sendMessage = async () => {
-  if (!inputText.value.trim()) return;
-  console.log("👉 傳進來的 conversation_id：", props.currentConversationId);
-  const userMessage = inputText.value;
+  sending.value = true;
   inputText.value = "";
-  appendMessage({ role: "user", text: userMessage });
+  appendMessage({ role: "user", text }); // ✅ 先把自己的訊息顯示出來（父層會 push 到 dialog_wrapper）
+  emit("show"); // 送出時打開右側
 
   try {
-    let res;
+    // 如需驗證可啟用：
+    const auth = getAuth();
+    const token = await getAuth().currentUser?.getIdToken();
+    const headers = { Authorization: token };
 
-    if (!localConversationId.value) {
-      // 沒有 conversation_id，使用 start_conversation 建立新對話
-      res = await axios.post("http://localhost:5000/gpt/start_conversation", {
-        initial_message: userMessage,
-      });
+    // ✅ 先嘗試用現有 convId：父層 props 或 sessionStorage
+    let convId =
+      props.currentConversationId ||
+      sessionStorage.getItem("conversation_id") ||
+      null;
 
-      console.log("🚀 新 conversation_id 要傳給父層：", res.data.conversation_id);
-      emit("updateConversationId", res.data.conversation_id); // ✅ 傳回新 conversation_id
-      localConversationId.value = res.data.conversation_id;  // ✅ 更新本地值，供下一輪使用
+    if (!convId) {
+      // 🟢 沒有 id：先建立對話
+      const res = await axios.post(
+        "http://localhost:5000/gpt/start_conversation",
+        { initial_message: text },
+        { headers }
+      );
+      const newId = res.data.conversation_id;
+      emit("updateConversationId", newId); // ✅ 交給父層存
+      convId = res.data.conversation_id;
+      // 同步給父層 & 存到 sessionStorage，之後其他頁也能接
+      emit("updateConversationId", convId);
+      sessionStorage.setItem("conversation_id", convId);
+
+      appendMessage({ role: "bot", text: res.data.reply }); // 立刻顯示 bot 回覆
     } else {
-      // 已有 conversation_id，使用 ask 延續對話
-      res = await axios.post("http://localhost:5000/gpt/ask", {
-        message: userMessage,
-        conversation_id: localConversationId.value,  // ✅ 用自己的
-      });
+      // 🟢 有 id：延續對話
+      const res = await axios.post(
+        "http://localhost:5000/gpt/ask",
+        { message: text, conversation_id: convId },
+        { headers }
+      );
+      appendMessage({ role: "bot", text: res.data.reply });
     }
-
-    // 無論新建還是延續，都加入機器人回覆
-    console.log("🧠 加入 bot 回覆：", res.data.reply, typeof res.data.reply);
-    appendMessage({ role: "bot", text: res.data.reply });
-
   } catch (err) {
     console.error("GPT 回覆失敗", err);
+    appendMessage({ role: "bot", text: "發生錯誤，請稍後再試。" });
+  } finally {
+    sending.value = false;
   }
 };
-
 
 //機器人語音回復
 const speak = async (text) => {
@@ -246,19 +254,25 @@ async function uploadAndSend(blob) {
 
     const transcript = sttRes.data.transcript;
     const filepath = sttRes.data.file;
+    const conversationID = sessionStorage.getItem("conversation_id")
 
     // 🟢 只在這裡發送 GPT，避免再觸發 watch or props
     appendMessage({ role: "user", text: transcript });
     emit("show"); // 加在 uploadAndSend 的最後
-    const gptRes = await axios.post("http://localhost:5000/gpt/ask_from_stt", {
-      filepath,
-      user_id: "test_user",
-    });
+    const gptRes = await axios.post(
+      "http://localhost:5000/gpt/ask_from_stt",
+      {
+        filepath,
+        user_id: user_id,
+        conversation_id: conversationID,
+      },
+      { headers: { Authorization: localStorage.getItem("token") } }
+    );
 
     const botReply = gptRes.data.reply;
 
-    appendMessage({ role: "bot", text: botReply });
-    await speak(botReply);
+    appendMessage({ role: "bot", text: botReply.reply });
+    await speak(botReply.reply);
   } catch (err) {
     console.error("語音處理錯誤", err);
     appendMessage({ role: "bot", text: "語音處理失敗，請稍後再試。" });

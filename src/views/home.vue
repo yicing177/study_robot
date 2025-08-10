@@ -2,6 +2,7 @@
   <div class="container">
     <div :style="backgroundStyle" class="room_image"></div>
     <Robot ref="robotRef" />
+    <Function @openConversation="handleOpenConversation" />
     <div class="chatting">
       <div class="default" v-if="!isChatOpen">
         <button class="d1" @click="setInputText('明天要考試了好焦慮...')">
@@ -19,6 +20,7 @@
       </div>
 
       <div v-if="isChatOpen" class="dialog_wrapper" ref="dialogWrapper">
+        <div class="title" v-if="currentTitle">{{ currentTitle }}</div>
         <div
           v-for="(msg, i) in messages"
           :key="i"
@@ -40,6 +42,7 @@
         :currentConversationId="currentConversationId"
         @updateConversationId="handleNewConversationId"
         @updateMessages="addMessage"
+        @clearInitial="() => (inputText = '')"
       />
       <button class="toggle_btn" @click="isChatOpen = !isChatOpen">
         {{ isChatOpen ? "▼ 收起對話框" : "▲ 展開對話框" }}
@@ -52,8 +55,9 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted } from "vue";
+import { ref, watch, nextTick, onMounted, onActivated } from "vue";
 import Robot from "@/components/Robot.vue";
+import Function from "@/components/function.vue";
 import roomImage from "@/assets/image/room4.png";
 import chat_bottom from "../components/chat_bottom.vue";
 import botAvatar from "@/assets/image/avatar_bot.svg";
@@ -63,6 +67,12 @@ import Greet2 from "@/assets/audio/welcome_02.wav";
 import Greet3 from "@/assets/audio/welcome_03.wav";
 import axios from "axios";
 
+// ✅ 定義角色正規化函式
+const normalizeRole = (r) => {
+  return (r === "assistant" || r === "system" || r === "bot")
+    ? "bot"
+    : "user";
+};
 
 const backgroundStyle = ref({
   backgroundImage: `url(${roomImage})`, // 使用導入的圖片路徑
@@ -86,6 +96,25 @@ function showToast(message, duration = 10000) {
     toastVisible.value = false;
   }, duration);
 }
+
+const currentTitle = ref("");
+
+const handleOpenConversation = ({ conversationId, title, messages: hist }) => {
+  currentConversationId.value = conversationId;
+  currentTitle.value = title || "";
+  messages.value = (hist || []).map(m => ({
+    role: normalizeRole(m.role),         // ✅ 統一角色
+    text: m.text ?? m.content ?? '',
+    timestamp: m.timestamp
+  }));
+  isChatOpen.value = true; // ✅ 展開底部對話框
+
+  // ✅ 捲到底（你原本就有 watch，也可以保留）
+  nextTick(() => {
+    dialogWrapper.value &&
+      (dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight);
+  });
+};
 
 const addMessage = (msg) => {
   console.log("收到訊息：", msg);
@@ -117,6 +146,46 @@ const currentConversationId = ref(null);
 const handleNewConversationId = (id) => {
   currentConversationId.value = id;
 };
+
+// ✅ 依 conversationId 載入歷史
+const loadConversationById = async (conversationId) => {
+  if (!conversationId) return;
+  try {
+    const token = localStorage.getItem("token"); // 或用 Firebase getIdToken()
+    const res = await axios.post(
+      "http://localhost:5000/gpt/get_conversation",
+      { conversation_id: conversationId },
+      { headers: { Authorization: token } }
+    );
+
+    const hist = (res.data.messages || []).map(m => ({
+      role: normalizeRole(m.role),
+      text: m.text ?? m.content ?? "",
+      timestamp: m.timestamp
+    }));
+
+    currentConversationId.value = conversationId;
+    currentTitle.value = res.data.title || currentTitle.value || "";
+    messages.value = hist;
+    isChatOpen.value = true;
+
+    await nextTick();
+    if (dialogWrapper.value) {
+      dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
+    }
+  } catch (err) {
+    console.error("❌ home 載入歷史失敗", err);
+  }
+};
+
+// ✅ 進到 home（或從 keep-alive 喚醒）時，自動接續 sessionStorage 的對話
+const tryLoadFromSession = () => {
+  const convId = sessionStorage.getItem("conversation_id");
+  if (convId) loadConversationById(convId);
+};
+
+onMounted(tryLoadFromSession);
+onActivated?.(tryLoadFromSession); // 若 home 被 <keep-alive> 包住才會觸發
 
 const greetingAudio = ref(null);
 const greetingAudios = [Greet1, Greet2, Greet3];
