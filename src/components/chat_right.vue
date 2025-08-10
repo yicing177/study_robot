@@ -7,78 +7,83 @@
     </div>
     <div class="chat_right_dialog" ref="dialogWrapper">
       <template v-for="(msg, i) in displayedMessages" :key="i">
-      <!-- 顯示訊息 -->
-      <div v-if="!msg.type || msg.type === 'text'" :class="['bubble', typeof msg.role === 'string' ? msg.role : 'bot']">
-        <span>
-        {{
-          typeof msg.text === 'string'
-          ? msg.text
-          : (msg.text && typeof msg.text === 'object' && 'reply' in msg.text)
-            ? msg.text.reply
-            : JSON.stringify(msg.text)
-        }}
-        </span>
-      </div>
-      
-      <!-- 顯示難度選擇按鈕 -->
-      <div v-else-if="msg.type === 'buttons'" :class="['bubble', msg.role]">
-        <div>{{ msg.text }}</div>
-        <div class="button_group">
-          <button
-            v-for="btn in msg.buttons"
-            :key="btn"
-            class="difficulty_button"
-            @click="selectDifficulty(btn)"
-          >
-            {{ btn }}
-          </button>
+        <!-- 顯示訊息 -->
+        <div
+          v-if="!msg.type || msg.type === 'text'"
+          :class="['bubble', typeof msg.role === 'string' ? msg.role : 'bot']"
+        >
+          <span>
+            {{
+              typeof msg.text === "string"
+                ? msg.text
+                : msg.text &&
+                  typeof msg.text === "object" &&
+                  "reply" in msg.text
+                ? msg.text.reply
+                : JSON.stringify(msg.text)
+            }}
+          </span>
         </div>
-      </div>
 
-      <!-- 顯示題數輸入框 -->
-      <div v-else-if="msg.type === 'input'" :class="['bubble', msg.role]">
-        <div class="num">
+        <!-- 顯示難度選擇按鈕 -->
+        <div v-else-if="msg.type === 'buttons'" :class="['bubble', msg.role]">
           <div>{{ msg.text }}</div>
-          <input
-            class="num_box"
-            type="number"
-            v-model="quizCount"
-            placeholder="請輸入題數"
-          />
-          <button class="num_btn" @click="submitQuizCount">確認</button>
-        </div>
-      </div>
-
-      <!-- 顯示題目+選項 -->
-      <div v-else-if="msg.type === 'quiz'" :class="['bubble', msg.role]">
-        <div class="quiz-question">
-          <p>{{ msg.index + 1 }}. {{ msg.question }}</p>
-          <div v-for="opt in msg.options" :key="opt">
-            <label
-              class="quiz-option"
-              :class="{ selected: userAnswers[msg.index] === opt }"
+          <div class="button_group">
+            <button
+              v-for="btn in msg.buttons"
+              :key="btn"
+              class="difficulty_button"
+              @click="selectDifficulty(btn)"
             >
-              <input
-                type="radio"
-                :name="'question_' + msg.index"
-                :value="opt"
-                v-model="userAnswers[msg.index]"
-              />
-              {{ opt }}
-            </label>
+              {{ btn }}
+            </button>
           </div>
         </div>
-      </div>
-    </template>
 
-    <!-- 顯示送出按鈕 -->
-    <div
-      v-if="quizSubmitted === false && quizQuestions.length > 0"
-      class="submit_wrapper"
-    >
-      <button class="submit_button" @click="submitAnswers">送出答案</button>
+        <!-- 顯示題數輸入框 -->
+        <div v-else-if="msg.type === 'input'" :class="['bubble', msg.role]">
+          <div class="num">
+            <div>{{ msg.text }}</div>
+            <input
+              class="num_box"
+              type="number"
+              v-model="quizCount"
+              placeholder="請輸入題數"
+            />
+            <button class="num_btn" @click="submitQuizCount">確認</button>
+          </div>
+        </div>
+
+        <!-- 顯示題目+選項 -->
+        <div v-else-if="msg.type === 'quiz'" :class="['bubble', msg.role]">
+          <div class="quiz-question">
+            <p>{{ msg.index + 1 }}. {{ msg.question }}</p>
+            <div v-for="opt in msg.options" :key="opt">
+              <label
+                class="quiz-option"
+                :class="{ selected: userAnswers[msg.index] === opt }"
+              >
+                <input
+                  type="radio"
+                  :name="'question_' + msg.index"
+                  :value="opt"
+                  v-model="userAnswers[msg.index]"
+                />
+                {{ opt }}
+              </label>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- 顯示送出按鈕 -->
+      <div
+        v-if="quizSubmitted === false && quizQuestions.length > 0"
+        class="submit_wrapper"
+      >
+        <button class="submit_button" @click="submitAnswers">送出答案</button>
+      </div>
     </div>
-  </div>
     <!-- 輸入框 -->
     <div v-if="isRecording" class="recording_hint">
       🎤 錄音中... 再次點擊語音按鈕以停止
@@ -104,7 +109,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch, computed } from "vue";
+import { onMounted, ref, watch, computed, nextTick } from "vue";
 import axios from "axios";
 import Upload from "@/components/upload.vue";
 import { getAuth } from "firebase/auth";
@@ -112,9 +117,13 @@ import { getAuth } from "firebase/auth";
 const auth = getAuth();
 const user_id = auth.currentUser?.uid;
 
-
 const inputText = ref("");
-const emit = defineEmits(["updateMessages", "sendWithText", "updateConversationId", "resetMessages"]);
+const emit = defineEmits([
+  "updateMessages",
+  "sendWithText",
+  "updateConversationId",
+  "resetMessages",
+]);
 const props = defineProps({
   initialText: String,
   initialMessages: {
@@ -136,7 +145,13 @@ watch(
   (newVal) => {
     console.log("👀 chat_right 收到 conversation_id:", newVal);
   },
-  { immediate: true }
+  { immediate: true },
+
+  nextTick(() => {
+    if (dialogWrapper.value) {
+      dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
+    }
+  })
 );
 
 //處理本地對話
@@ -199,9 +214,6 @@ const submitQuizCount = async () => {
       num_questions: num,
     });
 
-
-
-
     console.log("✅ API 回傳完整內容：", res.data);
     const quiz = res.data.quiz; // ✅ 這邊定義 quiz
     const message = res.data.message || "";
@@ -209,10 +221,10 @@ const submitQuizCount = async () => {
 
     if (!quiz || quiz.length === 0) {
       props.messages.push({
-      role: "bot",
-      text: `⚠️ 出題失敗：${message || "請稍後再試。"}`,
-    });
-    return;
+        role: "bot",
+        text: `⚠️ 出題失敗：${message || "請稍後再試。"}`,
+      });
+      return;
     }
 
     quiz.forEach((q, idx) => {
@@ -264,22 +276,25 @@ const submitAnswers = async () => {
 
 const ensureConversationId = async (initialMessage = "我想開始對話") => {
   let conversationId = props.currentConversationId;
+  let justCreated = false;
+  let starterReply = null;
 
   if (!conversationId) {
-    const res = await axios.post("http://localhost:5000/gpt/start_conversation", {
-      initial_message: initialMessage,
-    }, {
-      headers: {
-        Authorization: localStorage.getItem("token"),
-      }
-    });
-
+    const res = await axios.post(
+      "http://localhost:5000/gpt/start_conversation",
+      { initial_message: initialMessage },
+      { headers: { Authorization: localStorage.getItem("token") } } // 或 getIdToken()
+    );
     conversationId = res.data.conversation_id;
+    starterReply = res.data.get("reply") ?? null; // 後端通常會回第一個回覆
+    justCreated = true;
     emit("updateConversationId", conversationId);
+    // 也可以同步 sessionStorage，和其他頁面一致
+    sessionStorage.setItem("conversation_id", conversationId);
     console.log("📌 自動建立 conversation_id：", conversationId);
   }
 
-  return conversationId;
+  return { conversationId, justCreated, starterReply };
 };
 
 const sendMessage = async () => {
@@ -288,29 +303,35 @@ const sendMessage = async () => {
   inputText.value = "";
   appendMessage({ role: "user", text: userMessage });
 
-  console.log("📤 準備送出訊息，conversation_id 是：", props.currentConversationId);
-  
-  let conversationId = await ensureConversationId(userMessage);
+  console.log(
+    "📤 準備送出訊息，conversation_id 是：",
+    props.currentConversationId
+  );
+
+  const { conversationId, justCreated, starterReply } =
+    await ensureConversationId(userMessage);
   try {
-    const res = await axios.post("http://localhost:5000/gpt/ask", {
-        message: userMessage,
-        conversation_id: conversationId,
-      },
-      {
-        headers: {
-          Authorization: localStorage.getItem("token"),
-        },
+    if (justCreated) {
+      // 🟢 新開對話：start_conversation 已經產生第一則回覆
+      if (starterReply) {
+        appendMessage({ role: "bot", text: starterReply });
+        await speak(starterReply);
       }
-    );
-      
-    const botReply = res.data.reply;
-    // ✅ 若 response 又回傳新的 conversation_id，更新給父層
-    if (res.data.conversation_id && res.data.conversation_id !== conversationId) {
-      emit("updateConversationId", res.data.conversation_id);  // ✅ 正確使用 emit
-      console.log("✅ 更新 conversation_id:", res.data.conversation_id);
+      return; // 🚫 不要再 call /ask，避免重送一次相同訊息
     }
-    
-    appendMessage({ role: "bot", text: botReply,conversation_id: res.data.conversation_id || null});
+
+    // 🟢 已有對話：才用 /ask
+    const res = await axios.post(
+      "http://localhost:5000/gpt/ask",
+      { message: userMessage, conversation_id: conversationId },
+      { headers: { Authorization: localStorage.getItem("token") } }
+    );
+    const botReply = res.data.reply;
+    appendMessage({
+      role: "bot",
+      text: botReply,
+      conversation_id: res.data.conversation_id || null,
+    });
     await speak(botReply);
   } catch (err) {
     props.messages.push({ role: "bot", text: "發生錯誤，請稍後再試。" });
@@ -434,13 +455,21 @@ async function uploadAndSend(blob) {
     });
     appendMessage({ role: "user", text: sttRes.data.transcript });
     const filepath = sttRes.data.file;
+    const conversationID = sessionStorage.getItem("conversation_id");
 
-    const gptRes = await axios.post("http://localhost:5000/gpt/ask_from_stt", {
-      filepath,
-      user_id: user_id,//邱改的
-    });
+    const gptRes = await axios.post(
+      "http://localhost:5000/gpt/ask_from_stt",
+      {
+        filepath,
+        user_id: user_id, //邱改的
+        conversation_id: conversationID,
+      },
+      { headers: { Authorization: localStorage.getItem("token") } }
+    );
+    console.log(gptRes);
 
     const botReply = gptRes.data.reply;
+    console.log(botReply.reply);
 
     props.messages.push({ role: "bot", text: botReply.reply });
     console.log("語音回覆內容：", botReply);
@@ -457,20 +486,21 @@ async function uploadAndSend(blob) {
 
 const handleSummary = async () => {
   try {
-    const convId = await ensureConversationId("我想進行總結");
-
-    const res = await axios.post("http://localhost:5000/gpt/summarize", {
-      conversation_id: convId,
-    });
+    const { conversationId } = await ensureConversationId("我想進行總結"); // ✅ 只拿字串
+    const res = await axios.post(
+      "http://localhost:5000/gpt/summarize",
+      { conversation_id: conversationId },
+      { headers: { Authorization: localStorage.getItem("token") } }
+    );
 
     const summaryText = res.data.summary;
-
     emit("updateMessages", { role: "bot", text: "✅ 已加入重點整理！" });
   } catch (err) {
     console.error("總結失敗", err);
     emit("updateMessages", { role: "bot", text: "總結失敗，請稍後再試。" });
   }
 };
+
 
 const confirmReset = async () => {
   const wantsSummary = window.confirm(
@@ -545,18 +575,18 @@ const confirmReset = async () => {
 }
 /* 整條滾動軸 */
 .chat_right_dialog::-webkit-scrollbar {
-  width: 5px;  
+  width: 5px;
 }
 
 /* 軌道（背景） */
 .chat_right_dialog::-webkit-scrollbar-track {
-  background: transparent;  
+  background: transparent;
   border-radius: 5px;
 }
 
 /* 捲軸滑塊 */
 .chat_right_dialog::-webkit-scrollbar-thumb {
-  background-color: #a4a4a4; 
+  background-color: #a4a4a4;
   border-radius: 10px;
 }
 .chat_right_dialog::-webkit-scrollbar-thumb:hover {

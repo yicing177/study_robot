@@ -30,16 +30,16 @@
             <!-- <button v-if="!book.isPlaceholder" @click="viewFile(book)">
               <p>{{ book.title || book.summary_text?.slice(0, 10) }}</p>
             </button> -->
-            <button v-if="!book.isPlaceholder" @click="viewFile(book)">
+            <button class="book_title" v-if="!book.isPlaceholder" @click="viewFile(book)">
               <p>{{ book.title || "未命名對話" }}</p>
             </button>
           </div>
         </div>
       </div>
-      <div class="pagination-controls">
-        <button @click="prevPage" :disabled="currentPage === 1">上一頁</button>
-        <span>{{ currentPage }} / {{ maxPage }}</span>
-        <button @click="nextPage" :disabled="currentPage === maxPage">下一頁</button>
+      <div class="page_btn">
+        <button class="last_btn" @click="prevPage" :disabled="currentPage === 1">上一頁</button>
+        <span class="pages">{{ currentPage }} / {{ maxPage }}</span>
+        <button class="next_btn" @click="nextPage" :disabled="currentPage === maxPage">下一頁</button>
       </div>
     </div>
   </div>
@@ -300,5 +300,31 @@ const viewFile = (book) => {
   background-color: transparent;
   border: none;
   box-shadow: none;
+}
+.book_title{
+  background-color: white;
+  border: 1px solid;
+  padding: 10px 5px;
+  border-color: #c8b890;
+}
+.page_btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+}
+.pages {
+  margin: 0;
+}
+.last_btn,
+.next_btn {
+  height: 30px;
+  border: 0px;
+  border-radius: 5px;
+  background-color: #f0ece9;
+}
+.last_btn:hover,
+.next_btn:hover{
+  box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.3);
 }
 </style>

@@ -76,16 +76,15 @@
         @updateConversationId="handleUpdateConversationId"
       />
     </div>
-    <div v-if="!showChatRight" class="chat_bottom">
+    <div v-show="!showChatRight" class="chat_bottom">
       <ChatBottom
         :key="chatKey"
         :messages="messages"
-        :currentConversationId="currentConversationId"                     
+        :currentConversationId="currentConversationId"
         @show="chatRightOpen"
         @updateMessages="addMessage"
-        @sendWithText="handleSendWithText"   
+        @sendWithText="handleSendWithText"
         @updateConversationId="handleUpdateConversationId"
-        v-if="!showChatRight"
       />
     </div>
   </div>
@@ -101,7 +100,6 @@ import Function from "@/components/function.vue";
 import Music from "../components/music.vue";
 import axios from "axios";
 
-
 const route = useRoute();
 const showPreview = ref(false);
 const fileURL = computed(() => route.query.file || "");
@@ -112,8 +110,38 @@ const totalPages = ref(0);
 const currentPages = ref(1);
 const showChatRight = ref(false);
 const initialRightInput = ref("");
+const normalizeRole = (r) =>
+  ["assistant", "system", "bot"].includes(r) ? "bot" : "user";
 const currentConversationId = ref(null); // ✅ 宣告 reactive 狀態
 const messages = ref([]);
+const currentTitle = ref(null);;
+
+// ✅ 依 ID 載入歷史
+const loadConversationById = async (conversationId) => {
+  if (!conversationId) return;
+  try {
+    const token = localStorage.getItem("token"); // 你也可用 Firebase getIdToken
+    const res = await axios.post(
+      "http://localhost:5000/gpt/get_conversation",
+      { conversation_id: conversationId },
+      { headers: { Authorization: token } }
+    );
+
+    const hist = (res.data.messages || []).map((m) => ({
+      role: normalizeRole(m.role),
+      text: m.text || m.content || "",
+      timestamp: m.timestamp,
+    }));
+
+    currentConversationId.value = conversationId;
+    messages.value = hist;
+    
+    // 同步標題
+    currentTitle.value = res.data.title || currentTitle.value;
+  } catch (err) {
+    console.error("❌ 載入歷史失敗", err);
+  }
+};
 
 watch(currentConversationId, (newVal) => {
   console.log("📌 file.vue 中 currentConversationId 改變為：", newVal);
@@ -122,12 +150,18 @@ watch(currentConversationId, (newVal) => {
 const handleUpdateConversationId = (id) => {
   console.log("🟢 收到新 conversation_id：", id);
   currentConversationId.value = id;
+  if (id) {
+    sessionStorage.setItem("conversation_id", id); // ✅ 同步給其他頁
+  } else {
+    sessionStorage.removeItem("conversation_id");
+  }
 };
 
 const user_id = localStorage.getItem("user_id"); // ✅ 加這行
 
 const addMessage = (msg) => {
   messages.value.push(msg); // 不用再加 { role: ..., text: ... }，因為子元件已經是處理好的物件
+  showChatRight.value = true;
 };
 
 const props = defineProps({
@@ -137,13 +171,17 @@ const props = defineProps({
   },
 });
 
-
 onMounted(() => {
   if (fileType === "application/pdf") {
     const loadingTask = createLoadingTask(pdfSrc.value);
     loadingTask.promise.then((pdf) => {
       totalPages.value = pdf.numPages;
     });
+  }
+  // ✅ 進頁時試著接續 sessionStorage 的對話
+  const convId = sessionStorage.getItem("conversation_id");
+  if (convId) {
+    loadConversationById(convId);
   }
 });
 //邱
@@ -179,10 +217,15 @@ const handleSendWithText = async (text) => {
   try {
     const res = await axios.post("http://localhost:5000/gpt/ask", {
       message: text,
-      user_id: user_id,//邱改的
+      user_id: user_id, //邱改的
     });
     const botReply = res.data.reply;
-    messages.value.push({ role: "bot", text: botReply,conversation_id: res.data.conversation_id || null }); // 顯示 GPT 回覆
+    console.log("收到機器人回復",botReply)
+    messages.value.push({
+      role: "bot",
+      text: botReply,
+      conversation_id: res.data.conversation_id || null,
+    }); // 顯示 GPT 回覆
   } catch (err) {
     console.error("GPT 回覆失敗", err);
   }
@@ -239,7 +282,7 @@ const sendHighlight = async (action) => {
 
   try {
     const res = await axios.post("http://localhost:5000/gpt/highlight_action", {
-      user_id: user_id,//邱改的
+      user_id: user_id, //邱改的
       text: selectedText.value,
       action: action,
     });
@@ -302,7 +345,7 @@ const resetMessages = () => {
   background-color: #dfd5ce;
   border: 0px;
 }
-.toggle_btn:hover{
+.toggle_btn:hover {
   box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.3);
 }
 .chat_bottom {
@@ -393,7 +436,7 @@ const resetMessages = () => {
   background-color: #f0ece9;
 }
 .last_btn:hover,
-.next_btn:hover{
+.next_btn:hover {
   box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.3);
 }
 .highlight_options {
