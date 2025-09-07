@@ -16,7 +16,6 @@
       >
         重點整理
       </button>
-      <audio ref="shelfAudio"></audio>
     </div>
     <div class="book_shelf">
       <div class="shelf" v-for="(row, rowIndex) in bookRows" :key="rowIndex">
@@ -30,64 +29,65 @@
             <!-- <button v-if="!book.isPlaceholder" @click="viewFile(book)">
               <p>{{ book.title || book.summary_text?.slice(0, 10) }}</p>
             </button> -->
-            <button class="book_title" v-if="!book.isPlaceholder" @click="viewFile(book)">
+            <button
+              class="book_title"
+              v-if="!book.isPlaceholder"
+              @click="viewFile(book)"
+            >
               <p>{{ book.title || "未命名對話" }}</p>
             </button>
           </div>
         </div>
       </div>
       <div class="page_btn">
-        <button class="last_btn" @click="prevPage" :disabled="currentPage === 1">上一頁</button>
+        <button
+          class="last_btn"
+          @click="prevPage"
+          :disabled="currentPage === 1"
+        >
+          上一頁
+        </button>
         <span class="pages">{{ currentPage }} / {{ maxPage }}</span>
-        <button class="next_btn" @click="nextPage" :disabled="currentPage === maxPage">下一頁</button>
+        <button
+          class="next_btn"
+          @click="nextPage"
+          :disabled="currentPage === maxPage"
+        >
+          下一頁
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, onDeactivated } from "vue";
+import { onBeforeRouteLeave } from "vue-router";
+import { audioManager } from "@/composables/audioManager.js";
 import { useRouter } from "vue-router";
 import axios from "axios";
 import ShelfSound1 from "@/assets/audio/a_material_01.wav";
 import ShelfSound2 from "@/assets/audio/a_material_02.wav";
 
-
 const router = useRouter();
 
 const currentShelf = ref("myBook"); // "myBook" 或 "summary"
-const shelfAudio = ref(null);
+const shelfGreetKeys = {
+  myBook: "greeted:shelf:myBook",
+  summary: "greeted:shelf:summary",
+};
 const uploadedFiles = ref([]);
 const summaries = ref([]); // 暫時為空，未來串後端放這邊
 
-
-const booksPerRow = 5;// 書架每層最多顯示的書本數
+const booksPerRow = 5; // 書架每層最多顯示的書本數
 const rowsPerPage = 3;
 const currentPage = ref(1); // 🆕 目前是第幾頁
 
-// // 固定顯示三層，空位補上 placeholder
-// const bookRows = computed(() => {
-//   const rows = [];
-//   const source =
-//     currentShelf.value === "myBook" 
-//       ? uploadedFiles.value || []
-//       : summaries.value || [];
-
-//   for (let i = 0; i < 3; i++) {
-//     const start = i * booksPerRow;
-//     const row = source.slice(start, start + booksPerRow);
-//     while (row.length < booksPerRow) {
-//       row.push({ name: "", isPlaceholder: true });
-//     }
-//     rows.push(row);
-//   }
-//   return rows;
-// });
-
-//邱  我先用可以上下頁 因為我是用user_id去抓使用者上傳過的教材
 const bookRows = computed(() => {
-  const source = currentShelf.value === "myBook" ? uploadedFiles.value || []: summaries.value || [] ;
-    
+  const source =
+    currentShelf.value === "myBook"
+      ? uploadedFiles.value || []
+      : summaries.value || [];
 
   const startIndex = (currentPage.value - 1) * booksPerRow * rowsPerPage;
   const endIndex = startIndex + booksPerRow * rowsPerPage;
@@ -121,7 +121,6 @@ const prevPage = () => {
   if (currentPage.value > 1) currentPage.value--;
 };
 
-
 onMounted(async () => {
   try {
     const res = await axios.get("http://localhost:5000/get_all_materials", {
@@ -130,25 +129,30 @@ onMounted(async () => {
       },
     });
 
-      //書本排序照時間
+    //書本排序照時間
     uploadedFiles.value = res.data.sort((a, b) => {
       return new Date(b.upload_time) - new Date(a.upload_time);
     });
-    
+
     console.log("✅ 我的教材書架拿到的資料：", uploadedFiles.value);
   } catch (err) {
     console.error("❌ 我的教材無法取得書架資料", err);
   }
 
-  const audio = shelfAudio.value;
-  if (currentShelf.value === "myBook" && audio) {
-    audio.src = ShelfSound1;
-    audio.volume = 1;
-    audio.play().catch((e) => {
-      console.warn("📌 初始語音播放被阻擋：", e);
-    });
+  // 進入頁面依當前書櫃播一次（同一個 session 僅一次）
+  const key = shelfGreetKeys[currentShelf.value];
+  if (!sessionStorage.getItem(key)) {
+    const src = currentShelf.value === "myBook" ? ShelfSound1 : ShelfSound2;
+    audioManager
+      .play({
+        channel: "greeting",
+        src,
+        duckOthers: false,
+        fadeInMs: 120,
+      })
+      .catch(() => {});
+    sessionStorage.setItem(key, "true");
   }
-
 });
 
 onMounted(async () => {
@@ -163,7 +167,6 @@ onMounted(async () => {
   } catch (err) {
     console.error("❌ 重點整理無法取得書架資料", err);
   }
-
 });
 //切換顯示的書架
 const switchShelf = (shelfName) => {
@@ -192,7 +195,7 @@ const viewFile = (book) => {
       query: {
         type: "summary",
         title: book.title,
-        content: book.summary,//這行一定要對應到
+        content: book.summary, //這行一定要對應到
       },
     });
     return;
@@ -218,6 +221,22 @@ const viewFile = (book) => {
     console.error("不能獨文件 url");
   }
 };
+onUnmounted(() => {
+  audioManager.stop("tts");
+  audioManager.stop("greeting");
+  audioManager.stop("sfx");
+});
+
+onDeactivated(() => {
+  audioManager.stop("tts");
+  audioManager.stop("greeting");
+});
+
+onBeforeRouteLeave(() => {
+  audioManager.stop("tts");
+  audioManager.stop("greeting");
+});
+
 </script>
 
 <style scoped>
@@ -301,7 +320,7 @@ const viewFile = (book) => {
   border: none;
   box-shadow: none;
 }
-.book_title{
+.book_title {
   background-color: white;
   border: 1px solid;
   padding: 10px 5px;
@@ -324,7 +343,7 @@ const viewFile = (book) => {
   background-color: #f0ece9;
 }
 .last_btn:hover,
-.next_btn:hover{
+.next_btn:hover {
   box-shadow: 0px 0px 8px rgba(0, 0, 0, 0.3);
 }
 </style>

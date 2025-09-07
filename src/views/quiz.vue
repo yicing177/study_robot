@@ -7,23 +7,30 @@
       <chat_right
         :initialText="initialText"
         :messages="messages"
-        :currentConversationId="currentConversationId" 
+        :currentConversationId="currentConversationId"
         @updateConversationId="handleConversationIdUpdate"
         @updateMessages="addMessage"
       />
     </div>
-    <audio ref="greetingAudio"></audio>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted , watch} from "vue";
+import {
+  ref,
+  computed,
+  onMounted,
+  onUnmounted,
+  onDeactivated,
+  watch,
+} from "vue";
 import Robot from "@/components/Robot.vue";
 import chat_right from "@/components/chat_right.vue";
-import { useRoute } from "vue-router";
+import { useRoute, onBeforeRouteLeave } from "vue-router";
 import Greet1 from "@/assets/audio/a_test_01.wav";
 import Greet2 from "@/assets/audio/a_test_02.wav";
 import Greet3 from "@/assets/audio/a_test_03.wav";
+import { audioManager } from "@/composables/audioManager.js";
 
 const route = useRoute();
 const messages = ref([]); // ✅ 新增這個
@@ -42,7 +49,7 @@ const addMessage = (msg) => {
 };
 messages.value.push(...quizStarter); // ✅ 初始訊息丟進 messages
 
-const greetingAudio = ref(null);
+const pageGreetingKey = "greeted:quiz";
 const greetingAudios = [Greet1, Greet2, Greet3];
 
 const currentConversationId = ref(null); // 加這行
@@ -54,24 +61,45 @@ watch(currentConversationId, (newVal) => {
   console.log("📌 quiz.vue 中的 conversation_id 變成：", newVal);
 });
 onMounted(() => {
-  const handler = () => {
-    if (event.target.closest(".elf-button")) {
-      console.log("🧚‍♀️ 小精靈被點了，不播放語音");
+  // 已播過就不要重播（本頁只播一次）
+  if (sessionStorage.getItem(pageGreetingKey)) return;
+
+  const handler = async (e) => {
+    // 點到小精靈按鈕不播放
+    if (e?.target?.closest?.(".elf-button")) {
+      window.removeEventListener("click", handler);
       return;
     }
-    const randomIndex = Math.floor(Math.random() * greetingAudios.length);
-    const selectedGreeting = greetingAudios[randomIndex];
+    const idx = Math.floor(Math.random() * greetingAudios.length);
+    const src = greetingAudios[idx];
 
-    const audio = greetingAudio.value;
-    audio.src = selectedGreeting;
-    audio.volume = 1;
-    audio.play();
+    await audioManager
+      .play({
+        channel: "greeting",
+        src,
+        duckOthers: false, // 問候不壓別人；若此時有 TTS，會依優先權自動仲裁
+        fadeInMs: 120,
+      })
+      .catch(() => {});
 
-    console.log("✅ 播放語音檔：", selectedGreeting);
-    window.removeEventListener("click", handler); // 移除監聽器
+    sessionStorage.setItem(pageGreetingKey, "true");
+    window.removeEventListener("click", handler);
   };
-
   window.addEventListener("click", handler);
+});
+
+// 離開本頁或被暫存（keep-alive）時，保險停掉語音
+onUnmounted(() => {
+  audioManager.stop("tts");
+  audioManager.stop("greeting");
+});
+onDeactivated(() => {
+  audioManager.stop("tts");
+  audioManager.stop("greeting");
+});
+onBeforeRouteLeave(() => {
+  audioManager.stop("tts");
+  audioManager.stop("greeting");
 });
 </script>
 

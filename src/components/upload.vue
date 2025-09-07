@@ -27,6 +27,7 @@ import uploadIcon from "../assets/logo/upload.svg";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
+import { getAuth } from "firebase/auth";
 
 const uploading = ref(false); // 控制是否顯示上傳進度
 const uploadCompleted = ref(false); // 控制是否顯示完成按鈕
@@ -52,6 +53,9 @@ const handleFileUpload = async (event) => {
   formData.append("title", file.name);
 
   try {
+    const auth = getAuth();
+    const token = await getAuth().currentUser?.getIdToken();
+
     //真正發送請求」到 Flask 後端
     const res = await axios.post(
       "http://localhost:5000/upload_material",
@@ -59,6 +63,7 @@ const handleFileUpload = async (event) => {
       {
         headers: {
           "Content-Type": "multipart/form-data",
+          Authorization: token
         },
         //實際根據檔案大小計算上傳進度
         onUploadProgress: (e) => {

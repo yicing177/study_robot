@@ -76,7 +76,7 @@
         @updateConversationId="handleUpdateConversationId"
       />
     </div>
-    <div v-show="!showChatRight" class="chat_bottom">
+    <div v-if="!showChatRight" class="chat_bottom">
       <ChatBottom
         :key="chatKey"
         :messages="messages"
@@ -91,13 +91,21 @@
 </template>
 
 <script setup>
-import { useRoute } from "vue-router";
+import { useRoute, onBeforeRouteLeave } from "vue-router";
 import { VuePdf, createLoadingTask } from "vue3-pdfjs";
-import { ref, onMounted, watch, computed, onUnmounted } from "vue";
+import {
+  ref,
+  onMounted,
+  watch,
+  computed,
+  onUnmounted,
+  onDeactivated,
+} from "vue";
 import ChatBottom from "../components/chat_bottom.vue";
 import ChatRight from "@/components/chat_right.vue";
 import Function from "@/components/function.vue";
 import Music from "../components/music.vue";
+import { audioManager } from "@/composables/audioManager.js";
 import axios from "axios";
 
 const route = useRoute();
@@ -114,7 +122,7 @@ const normalizeRole = (r) =>
   ["assistant", "system", "bot"].includes(r) ? "bot" : "user";
 const currentConversationId = ref(null); // ✅ 宣告 reactive 狀態
 const messages = ref([]);
-const currentTitle = ref(null);;
+const currentTitle = ref(null);
 
 // ✅ 依 ID 載入歷史
 const loadConversationById = async (conversationId) => {
@@ -135,7 +143,7 @@ const loadConversationById = async (conversationId) => {
 
     currentConversationId.value = conversationId;
     messages.value = hist;
-    
+
     // 同步標題
     currentTitle.value = res.data.title || currentTitle.value;
   } catch (err) {
@@ -220,7 +228,7 @@ const handleSendWithText = async (text) => {
       user_id: user_id, //邱改的
     });
     const botReply = res.data.reply;
-    console.log("收到機器人回復",botReply)
+    console.log("收到機器人回復", botReply);
     messages.value.push({
       role: "bot",
       text: botReply,
@@ -262,7 +270,7 @@ const handleSelection = () => {
     // 記錄座標（加上捲動量 offset）
     highlightPosition.value = {
       x: rect.left + window.scrollX,
-      y: rect.bottom + window.scrollX,
+      y: rect.bottom + window.scrollY,
     };
   } else {
     selectedText.value = "";
@@ -288,8 +296,17 @@ const sendHighlight = async (action) => {
     });
 
     if (action === "read" && res.data.tts_url) {
-      const audio = new Audio(`http://localhost:5000${res.data.tts_url}`);
-      audio.play();
+      // ✅ 統一走 audioManager 的 tts channel
+      // 若希望朗讀比目前 TTS 更優先，先停掉舊的 TTS（建議這樣做，體驗比較直覺）
+      audioManager.stop("tts");
+      await audioManager
+        .play({
+          channel: "tts",
+          src: `http://localhost:5000${res.data.tts_url}`,
+          duckOthers: true, // 自動壓低 BGM
+          fadeInMs: 80,
+        })
+        .catch(() => {});
     } else if (action === "translate" && res.data.reply) {
       const sendMsg = "請幫我翻譯 " + selectedText.value;
       messages.value.push({ role: "user", text: sendMsg });
@@ -312,6 +329,14 @@ const chatKey = ref(0); // 每次改變會強制重新渲染 ChatRight/ChatBotto
 const resetMessages = () => {
   messages.value = []; // ✅ 這樣就能清空對話畫面
 };
+
+onDeactivated(() => {
+  audioManager.stop("tts");
+});
+
+onBeforeRouteLeave(() => {
+  audioManager.stop("tts");
+});
 </script>
 
 <style scoped>

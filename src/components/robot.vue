@@ -249,6 +249,7 @@ defineExpose({
   SayHi,
   startIdleLoop, // ✅ 加這行
   stopIdleLoop, // ✅ 也暴露出來給外面可叫用
+  Speak_2
 });
 </script>
 
