@@ -121,11 +121,11 @@ const loadConversationById = async (conversationId) => {
   if (!conversationId) return;
   try {
     const token = localStorage.getItem("token"); // 你也可用 Firebase getIdToken
-    const res = await axios.post(
-      "http://localhost:5000/gpt/get_conversation",
-      { conversation_id: conversationId },
-      { headers: { Authorization: token } }
-    );
+    const res = await axios.get(
+      "http://localhost:5000/gpt/get_conversation",{
+      params:{conversation_id: conversationId },
+      headers: { Authorization: token },
+    });
 
     const hist = (res.data.messages || []).map((m) => ({
       role: normalizeRole(m.role),

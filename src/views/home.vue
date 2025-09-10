@@ -149,13 +149,16 @@ const handleNewConversationId = (id) => {
 
 // ✅ 依 conversationId 載入歷史
 const loadConversationById = async (conversationId) => {
+  console.log("🔍 conversationId:", conversationId); // 加這行
   if (!conversationId) return;
   try {
     const token = localStorage.getItem("token"); // 或用 Firebase getIdToken()
-    const res = await axios.post(
+    const res = await axios.get(
       "http://localhost:5000/gpt/get_conversation",
-      { conversation_id: conversationId },
-      { headers: { Authorization: token } }
+      {
+       params:{ conversation_id: conversationId },
+       headers: { Authorization: token }
+       }
     );
 
     const hist = (res.data.messages || []).map(m => ({
@@ -269,16 +272,17 @@ const summarizeConversation = async () => {
       conversation_id: currentConversationId.value,
     }, {
       headers: {
+
         Authorization: localStorage.getItem("token"),
       },
     });
 
     const summary = res.data.summary;
-    console.log("✅ 摘要成功：");
+    console.log("✅ 摘要成功：",summary);
 
     messages.value.push({
       role: "bot",
-      text: `✅ 摘要完成`
+      text: "✅ 摘要成功" 
     });
 
   } catch (err) {

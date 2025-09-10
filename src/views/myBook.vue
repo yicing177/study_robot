@@ -124,11 +124,12 @@ const prevPage = () => {
 
 onMounted(async () => {
   try {
-    const res = await axios.get("http://localhost:5000/get_all_materials", {
-      headers: {
-        Authorization: localStorage.getItem("token"),
-      },
-    });
+    const token = localStorage.getItem("token"); // 或用 Firebase getIdToken()
+    const res = await axios.get("http://localhost:5000/get_all_materials",
+    {  
+      headers: { Authorization: token }
+    }
+  );
 
       //書本排序照時間
     uploadedFiles.value = res.data.sort((a, b) => {

@@ -286,7 +286,13 @@ const ensureConversationId = async (initialMessage = "我想開始對話") => {
       { headers: { Authorization: localStorage.getItem("token") } } // 或 getIdToken()
     );
     conversationId = res.data.conversation_id;
-    starterReply = res.data.get("reply") ?? null; // 後端通常會回第一個回覆
+    // starterReply = res.data.get("reply") ?? null; // 後端通常會回第一個回覆
+    // 正確的取值方式（擇一或依實際回傳結構做 fallback）
+    starterReply =
+      res.data.reply ??
+      res.data.first_reply ??
+      res.data.message ??
+      null;
     justCreated = true;
     emit("updateConversationId", conversationId);
     // 也可以同步 sessionStorage，和其他頁面一致
@@ -493,7 +499,10 @@ const handleSummary = async () => {
       { headers: { Authorization: localStorage.getItem("token") } }
     );
 
-    const summaryText = res.data.summary;
+
+    const summary = res.data.summary;
+    console.log("✅ 摘要成功：",summary);
+    
     emit("updateMessages", { role: "bot", text: "✅ 已加入重點整理！" });
   } catch (err) {
     console.error("總結失敗", err);
