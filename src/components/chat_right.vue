@@ -1,5 +1,8 @@
+<!-- chatRight -->
 <template>
   <div class="background">
+    <!-- 總結提示 -->
+    <div v-if="isSummary" class="summary_hint">總結中... 請稍後</div>
     <!-- 打包&新對話按鈕 -->
     <div class="btn_group">
       <button class="summary" @click="handleSummary">總結對話</button>
@@ -535,15 +538,18 @@ async function uploadAndSend(blob) {
   }
 }
 
+const isSummary = ref(false);
 // 總結
 const handleSummary = async () => {
   try {
     const { conversationId } = await ensureConversationId("我想進行總結");
+    isSummary.value = true;
     const res = await axios.post(
       "http://localhost:5000/gpt/summarize",
       { conversation_id: conversationId },
       { headers: { Authorization: localStorage.getItem("token") } }
     );
+    isSummary.value = false;
     appendMessage({ role: "bot", text: "✅ 已加入重點整理！" });
   } catch (err) {
     console.error("總結失敗", err);
@@ -582,11 +588,18 @@ onUnmounted(() => {
   // 停掉語音類
   stop();
 });
-
 </script>
 
 <style scoped>
 .recording_hint {
+  position: absolute;
+  background-color: #ffffff;
+  padding: 20px 40px;
+  z-index: 999;
+  bottom: 500px;
+  border-radius: 10px;
+}
+.summary_hint {
   position: absolute;
   background-color: #ffffff;
   padding: 20px 40px;

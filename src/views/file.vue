@@ -1,5 +1,6 @@
+<!-- file -->
 <template>
-  <Function v-if="!showChatRight" />
+  <Function v-if="!showChatRight" @openConversation="handleOpenConversation" />
   <Music v-if="!showChatRight" />
   <div :class="['file_container', { chat_mode: showChatRight }]">
     <div
@@ -76,7 +77,7 @@
         @updateConversationId="handleUpdateConversationId"
       />
     </div>
-    <div v-if="!showChatRight" class="chat_bottom">
+    <div v-show="!showChatRight" class="chat_bottom">
       <ChatBottom
         :key="chatKey"
         :messages="messages"
@@ -124,6 +125,40 @@ const currentConversationId = ref(null); // ✅ 宣告 reactive 狀態
 const messages = ref([]);
 const currentTitle = ref(null);
 
+// 接 Function 的歷史對話：停掉語音 → 設定 convId/title → 餵給 ChatRight
+const handleOpenConversation = ({ conversationId, title, messages: hist }) => {
+  // 先保險停掉目前語音（避免切換紀錄時還在念）
+  audioManager.stop("tts");
+  audioManager.stop("greeting");
+  audioManager.stop("sfx");
+
+  // 設定目前會話 id +（可選）同步到 sessionStorage，方便其他頁接續
+  currentConversationId.value = conversationId || null;
+  if (conversationId) {
+    sessionStorage.setItem("conversation_id", conversationId);
+  } else {
+    sessionStorage.removeItem("conversation_id");
+  }
+
+  // 轉成 ChatRight 期望的訊息格式（同 home 的 normalizeRole）
+  messages.value = (hist || []).map((m) => ({
+    role: normalizeRole(m.role),
+    text: m.text ?? m.content ?? "",
+    timestamp: m.timestamp,
+  }));
+
+  // 打開右側 ChatRight
+  showChatRight.value = true;
+
+  // 強制重新掛載 ChatRight（可選）：確保內部卷軸/暫存狀態刷新
+  chatKey.value += 1;
+
+  // （可選）若你有標題要顯示，可存在本頁或 sessionStorage
+  if (title) {
+    sessionStorage.setItem("conversation_title", title);
+  }
+};
+
 // ✅ 依 ID 載入歷史
 const loadConversationById = async (conversationId) => {
   if (!conversationId) return;
@@ -168,8 +203,31 @@ const handleUpdateConversationId = (id) => {
 const user_id = localStorage.getItem("user_id"); // ✅ 加這行
 
 const addMessage = (msg) => {
-  messages.value.push(msg); // 不用再加 { role: ..., text: ... }，因為子元件已經是處理好的物件
+  console.log("🔥 file.vue addMessage 收到訊息:", msg); // 除錯用
+
+  // 確保訊息格式正確
+  const normalizedMsg = {
+    role: normalizeRole(msg.role),
+    text: msg.text || msg.content || "",
+    id: msg.id || `msg_${Date.now()}_${Math.random()}`,
+    timestamp: msg.timestamp || new Date().toISOString(),
+  };
+
+  // 更新訊息陣列並強制重新渲染
+  messages.value = [...messages.value, normalizedMsg];
+  console.log("📝 更新後的 messages:", messages.value);
+
+  // 確保右側面板開啟
   showChatRight.value = true;
+
+  // 強制重新渲染 ChatRight（通過改變 key）
+  chatKey.value += 1;
+  console.log("🔄 強制重新渲染 ChatRight，新的 key:", chatKey.value);
+
+  // 如果有 conversation_id 更新，也要同步
+  if (msg.conversation_id) {
+    handleUpdateConversationId(msg.conversation_id);
+  }
 };
 
 const props = defineProps({
@@ -311,6 +369,7 @@ const sendHighlight = async (action) => {
       const sendMsg = "請幫我翻譯 " + selectedText.value;
       messages.value.push({ role: "user", text: sendMsg });
       showChatRight.value = true;
+
       messages.value.push({ role: "bot", text: res.data.reply });
     } else if (action === "examples" && res.data.reply) {
       const sendMsg = "我想知道 " + selectedText.value + " 的更多例句";

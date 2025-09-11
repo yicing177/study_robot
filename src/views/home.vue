@@ -19,6 +19,9 @@
         </button>
       </div>
 
+      <!-- 總結提示 -->
+      <div v-if="isSummary" class="summary_hint">總結中... 請稍後</div>
+
       <div v-if="isChatOpen" class="home_chatting_container">
         <div class="header">
           <div class="title" v-if="currentTitle">
@@ -80,7 +83,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted, onActivated, onUnmounted  } from "vue";
+import { ref, watch, nextTick, onMounted, onActivated, onUnmounted } from "vue";
 import Robot from "@/components/Robot.vue";
 import Function from "@/components/function.vue";
 import roomImage from "@/assets/image/room4.png";
@@ -349,15 +352,18 @@ const { isLooking, gazeX, gazeY } = useWebGazer(
   }
 );
 
+const isSummary = ref(false);
 // 重點整理
 const summarizeConversation = async () => {
   try {
+    isSummary.value = true;
     const res = await axios.post(
       "http://localhost:5000/gpt/summarize",
       { conversation_id: currentConversationId.value },
       { headers: { Authorization: localStorage.getItem("token") } }
     );
     const summary = res.data.summary;
+    isSummary.value = false;
     messages.value.push({ role: "bot", text: "✅ 摘要完成" });
   } catch (err) {
     console.error("❌ 摘要失敗：", err.response?.data || err.message);
@@ -407,10 +413,18 @@ onUnmounted(() => {
   audioManager.stop("greeting");
   audioManager.stop("tts");
 });
-
 </script>
 
 <style scoped>
+.summary_hint {
+  position: absolute;
+  background-color: #ffffff;
+  padding: 20px 40px;
+  z-index: 999;
+  bottom: 500px;
+  border-radius: 10px;
+}
+
 .home_chatting_container {
   display: flex;
   flex-direction: column;

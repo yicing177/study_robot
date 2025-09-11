@@ -39,21 +39,6 @@
     </button>
   </div>
 
-  <!-- 對話區（可繼續對話）-->
-  <!-- 新的輸入區 -->
-  <!-- 上面這兩個我位置我好像擺錯幫我擺謝美女 
-  <div class="custom-chat-input" v-if="currentConversationId">
-    <input
-      v-model="inputText"
-      @keyup.enter="sendMessage"
-      placeholder="輸入訊息..."
-      style="width: 300px; padding: 8px"
-    />
-    <button @click="sendMessage">送出</button>
-    我加了這個! 
-    <button @click="summarizeConversation">總結對話</button>
-  </div>-->
-
   <div class="message-panel" v-if="messages.length > 0">
     <h3>{{ currentTitle }}</h3>
     <div v-for="(msg, index) in messages" :key="index">

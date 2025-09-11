@@ -172,19 +172,17 @@ onMounted(async () => {
 const switchShelf = (shelfName) => {
   currentShelf.value = shelfName;
 
-  const audio = shelfAudio.value;
-  if (!audio) return;
-
-  if (shelfName === "myBook") {
-    audio.src = ShelfSound1;
-  } else if (shelfName === "summary") {
-    audio.src = ShelfSound2;
-  }
-
-  audio.volume = 1;
-  audio.play().catch((e) => {
-    console.warn("音訊播放被阻擋：", e);
-  });
+const key = shelfGreetKeys[shelfName];
+  if (!sessionStorage.getItem(key)) {
+    const src = shelfName === "myBook" ? ShelfSound1 : ShelfSound2;
+    audioManager.play({
+      channel: "greeting",
+      src,
+      duckOthers: false,
+      fadeInMs: 120,
+    }).catch(() => {});
+    sessionStorage.setItem(key, "true");
+ }
 };
 
 const viewFile = (book) => {
