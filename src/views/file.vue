@@ -1,5 +1,6 @@
+<!-- file -->
 <template>
-  <Function v-if="!showChatRight" />
+  <Function v-if="!showChatRight" @openConversation="handleOpenConversation" />
   <Music v-if="!showChatRight" />
   <div :class="['file_container', { chat_mode: showChatRight }]">
     <div
@@ -91,13 +92,21 @@
 </template>
 
 <script setup>
-import { useRoute } from "vue-router";
+import { useRoute, onBeforeRouteLeave } from "vue-router";
 import { VuePdf, createLoadingTask } from "vue3-pdfjs";
-import { ref, onMounted, watch, computed, onUnmounted } from "vue";
+import {
+  ref,
+  onMounted,
+  watch,
+  computed,
+  onUnmounted,
+  onDeactivated,
+} from "vue";
 import ChatBottom from "../components/chat_bottom.vue";
 import ChatRight from "@/components/chat_right.vue";
 import Function from "@/components/function.vue";
 import Music from "../components/music.vue";
+import { audioManager } from "@/composables/audioManager.js";
 import axios from "axios";
 
 const route = useRoute();
@@ -114,7 +123,41 @@ const normalizeRole = (r) =>
   ["assistant", "system", "bot"].includes(r) ? "bot" : "user";
 const currentConversationId = ref(null); // ✅ 宣告 reactive 狀態
 const messages = ref([]);
-const currentTitle = ref(null);;
+const currentTitle = ref(null);
+
+// 接 Function 的歷史對話：停掉語音 → 設定 convId/title → 餵給 ChatRight
+const handleOpenConversation = ({ conversationId, title, messages: hist }) => {
+  // 先保險停掉目前語音（避免切換紀錄時還在念）
+  audioManager.stop("tts");
+  audioManager.stop("greeting");
+  audioManager.stop("sfx");
+
+  // 設定目前會話 id +（可選）同步到 sessionStorage，方便其他頁接續
+  currentConversationId.value = conversationId || null;
+  if (conversationId) {
+    sessionStorage.setItem("conversation_id", conversationId);
+  } else {
+    sessionStorage.removeItem("conversation_id");
+  }
+
+  // 轉成 ChatRight 期望的訊息格式（同 home 的 normalizeRole）
+  messages.value = (hist || []).map((m) => ({
+    role: normalizeRole(m.role),
+    text: m.text ?? m.content ?? "",
+    timestamp: m.timestamp,
+  }));
+
+  // 打開右側 ChatRight
+  showChatRight.value = true;
+
+  // 強制重新掛載 ChatRight（可選）：確保內部卷軸/暫存狀態刷新
+  chatKey.value += 1;
+
+  // （可選）若你有標題要顯示，可存在本頁或 sessionStorage
+  if (title) {
+    sessionStorage.setItem("conversation_title", title);
+  }
+};
 
 // ✅ 依 ID 載入歷史
 const loadConversationById = async (conversationId) => {
@@ -135,7 +178,7 @@ const loadConversationById = async (conversationId) => {
 
     currentConversationId.value = conversationId;
     messages.value = hist;
-    
+
     // 同步標題
     currentTitle.value = res.data.title || currentTitle.value;
   } catch (err) {
@@ -160,6 +203,7 @@ const handleUpdateConversationId = (id) => {
 const user_id = localStorage.getItem("user_id"); // ✅ 加這行
 
 const addMessage = (msg) => {
+  console.log("file.vue收到的msg",msg)
   messages.value.push(msg); // 不用再加 { role: ..., text: ... }，因為子元件已經是處理好的物件
   showChatRight.value = true;
 };
@@ -220,7 +264,7 @@ const handleSendWithText = async (text) => {
       user_id: user_id, //邱改的
     });
     const botReply = res.data.reply;
-    console.log("收到機器人回復",botReply)
+    console.log("收到機器人回復", botReply);
     messages.value.push({
       role: "bot",
       text: botReply,
@@ -262,7 +306,7 @@ const handleSelection = () => {
     // 記錄座標（加上捲動量 offset）
     highlightPosition.value = {
       x: rect.left + window.scrollX,
-      y: rect.bottom + window.scrollX,
+      y: rect.bottom + window.scrollY,
     };
   } else {
     selectedText.value = "";
@@ -288,12 +332,22 @@ const sendHighlight = async (action) => {
     });
 
     if (action === "read" && res.data.tts_url) {
-      const audio = new Audio(`http://localhost:5000${res.data.tts_url}`);
-      audio.play();
+      // ✅ 統一走 audioManager 的 tts channel
+      // 若希望朗讀比目前 TTS 更優先，先停掉舊的 TTS（建議這樣做，體驗比較直覺）
+      audioManager.stop("tts");
+      await audioManager
+        .play({
+          channel: "tts",
+          src: `http://localhost:5000${res.data.tts_url}`,
+          duckOthers: true, // 自動壓低 BGM
+          fadeInMs: 80,
+        })
+        .catch(() => {});
     } else if (action === "translate" && res.data.reply) {
       const sendMsg = "請幫我翻譯 " + selectedText.value;
       messages.value.push({ role: "user", text: sendMsg });
       showChatRight.value = true;
+
       messages.value.push({ role: "bot", text: res.data.reply });
     } else if (action === "examples" && res.data.reply) {
       const sendMsg = "我想知道 " + selectedText.value + " 的更多例句";
@@ -312,6 +366,14 @@ const chatKey = ref(0); // 每次改變會強制重新渲染 ChatRight/ChatBotto
 const resetMessages = () => {
   messages.value = []; // ✅ 這樣就能清空對話畫面
 };
+
+onDeactivated(() => {
+  audioManager.stop("tts");
+});
+
+onBeforeRouteLeave(() => {
+  audioManager.stop("tts");
+});
 </script>
 
 <style scoped>

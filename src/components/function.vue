@@ -28,31 +28,58 @@
       </button>
     </ul>
   </div>
+
+  <!-- 歷史清單：在原本每一筆旁加「✎」編輯鈕 -->
   <div v-show="showHistory" class="historyList">
     <button class="closeHistory" @click="historyListClose">關閉</button>
-    <button
-      v-for="item in historyList"
-      :key="item.conversation_id"
-      @click="loadConversation(item.conversation_id, item.title)"
-    >
-      {{ item.title }}
-    </button>
-  </div>
 
-  <!-- 對話區（可繼續對話）-->
-  <!-- 新的輸入區 -->
-  <!-- 上面這兩個我位置我好像擺錯幫我擺謝美女 
-  <div class="custom-chat-input" v-if="currentConversationId">
-    <input
-      v-model="inputText"
-      @keyup.enter="sendMessage"
-      placeholder="輸入訊息..."
-      style="width: 300px; padding: 8px"
-    />
-    <button @click="sendMessage">送出</button>
-    我加了這個! 
-    <button @click="summarizeConversation">總結對話</button>
-  </div>-->
+    <div v-for="item in historyList" :key="item.conversation_id" class="row">
+      <button
+        class="open_btn"
+        @click="loadConversation(item.conversation_id, item.title)"
+      >
+        {{ item.title }}
+      </button>
+      <button
+        class="edit_btn"
+        title="重新命名"
+        @click="openUpdateWindow(item.conversation_id, item.title)"
+      >
+        ✎
+      </button>
+    </div>
+  </div>
+  <div class="update">
+    <div
+      class="updateWindow"
+      v-if="updateWindowVisible"
+      @keydown.esc="closeUpdateWindow"
+      @click.self="closeUpdateWindow"
+    >
+      <div class="dialog">
+        <h3>重新命名對話</h3>
+        <input
+          ref="titleInput"
+          v-model.trim="editingTitle"
+          type="text"
+          placeholder="輸入新標題"
+          @keyup.enter="submitUpdate"
+        />
+        <div class="actions">
+          <button class="ghost" @click="closeUpdateWindow">取消</button>
+          <button
+            class="primary"
+            :disabled="
+              pending || !editingTitle || editingTitle === originalTitle
+            "
+            @click="submitUpdate"
+          >
+            儲存
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="message-panel" v-if="messages.length > 0">
     <h3>{{ currentTitle }}</h3>
@@ -63,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted, defineEmits } from "vue";
+import { ref, watch, onMounted, onUnmounted, defineEmits, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import axios from "axios";
 import { getAuth } from "firebase/auth";
@@ -160,7 +187,7 @@ const currentTitle = ref("");
 const selectedHistory = ref(null); // 用來記住目前開啟的 conversationId
 
 // ✅ 讀取某筆對話後，上拋給父層（不要只自己顯示）
-const emit = defineEmits(["openConversation"]);
+const emit = defineEmits(["openConversation", "titleUpdated"]);
 const loadConversation = async (conversationId, title) => {
   if (selectedHistory.value === conversationId) {
     selectedHistory.value = null;
@@ -179,10 +206,10 @@ const loadConversation = async (conversationId, title) => {
       { headers: { Authorization: token } }
     );
 
-    const hist = (res.data.messages || []).map(m => ({
+    const hist = (res.data.messages || []).map((m) => ({
       role: m.role,
-      text: m.text || m.content,   // 後端欄位是 content
-      timestamp: m.timestamp
+      text: m.text || m.content, // 後端欄位是 content
+      timestamp: m.timestamp,
     }));
 
     // ✅ 把「選到的對話」交給父層處理
@@ -193,18 +220,125 @@ const loadConversation = async (conversationId, title) => {
     });
 
     selectedHistory.value = conversationId;
+    showHistory.value = false;
 
     sessionStorage.setItem("conversation_id", conversationId);
-    sessionStorage.setItem("conversation_title", res.data.title || title || "未命名對話");
-
+    sessionStorage.setItem(
+      "conversation_title",
+      res.data.title || title || "未命名對話"
+    );
   } catch (err) {
     console.error("❌ 無法取得歷史訊息", err);
   }
 };
 
+// ===== 視窗狀態 =====
+const updateWindowVisible = ref(false);
+const editingId = ref(null);
+const originalTitle = ref("");
+const editingTitle = ref("");
+const pending = ref(false);
+const titleInput = ref(null);
+
+// 通知父層用（例如去同步列表/右上標題）
+// const emit = defineEmits(["titleUpdated"]);
+
+// 打開視窗：自動帶入原標題並聚焦輸入框
+function openUpdateWindow(conversationId, title) {
+  editingId.value = conversationId;
+  originalTitle.value = title || "";
+  editingTitle.value = title || "";
+  updateWindowVisible.value = true;
+  nextTick(() => titleInput.value && titleInput.value.focus());
+  showHistory.value = false;
+}
+
+// 關閉並清空狀態
+function closeUpdateWindow() {
+  updateWindowVisible.value = false;
+  pending.value = false;
+  editingId.value = null;
+  originalTitle.value = "";
+  editingTitle.value = "";
+}
+
+// 送出更新
+async function submitUpdate() {
+  if (!editingId.value) return;
+  const newTitle = (editingTitle.value || "").trim();
+  if (!newTitle || newTitle === originalTitle.value) {
+    closeUpdateWindow();
+    return;
+  }
+  pending.value = true;
+  try {
+    const token = await getAuth().currentUser?.getIdToken();
+    await axios.post(
+      "/gpt/update_title",
+      { conversation_id: editingId.value, title: newTitle },
+      { headers: { Authorization: token } }
+    );
+    // ✅ 本地列表同步（historyList 立即更新顯示）
+    const idx = historyList.value.findIndex(
+      (h) => h.conversation_id === editingId.value
+    );
+    if (idx !== -1) historyList.value[idx].title = newTitle;
+
+    // 通知父層同步（列表/目前顯示中的標題）
+    emit("titleUpdated", { conversationId: editingId.value, title: newTitle });
+
+    // （可選）同步 sessionStorage，給其他頁用
+    if (sessionStorage.getItem("conversation_id") === editingId.value) {
+      sessionStorage.setItem("conversation_title", newTitle);
+    }
+  } catch (err) {
+    console.error("❌ 無法更新標題", err);
+    alert("更新失敗，請稍後再試。");
+  } finally {
+    pending.value = false;
+    closeUpdateWindow();
+  }
+}
 </script>
 
 <style scoped>
+.update {
+  position: relative;
+}
+.updateWindow {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #ebe9e9;
+  text-align: center;
+  padding: 10px 40px;
+  bottom: 350px;
+  z-index: 999;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.row {
+  width: 100%;
+}
+
+.open_btn {
+  width: 80%;
+}
+
+.edit_btn {
+  width: 20%;
+  height: 100%;
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  margin: 1em 0em;
+  gap: 10px;
+}
+
 .sidebar {
   left: 20px;
   padding: 0;
@@ -286,18 +420,18 @@ const loadConversation = async (conversationId, title) => {
 
 /* 整條滾動軸 */
 .historyList::-webkit-scrollbar {
-  width: 10px;  
+  width: 10px;
 }
 
 /* 軌道（背景） */
 .historyList::-webkit-scrollbar-track {
-  background: #e8e1dc;  
+  background: #e8e1dc;
   border-radius: 5px;
 }
 
 /* 捲軸滑塊 */
 .historyList::-webkit-scrollbar-thumb {
-  background-color: #8a786f; 
+  background-color: #8a786f;
   border-radius: 10px;
 }
 .historyList::-webkit-scrollbar-thumb:hover {

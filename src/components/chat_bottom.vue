@@ -14,7 +14,12 @@
         @keyup.enter="sendMessage()"
       />
       <div class="voice_btn" @click="toggleRecording">
-        <img src="../assets/logo/voice.svg" width="40" height="40" />
+        <img
+          src="../assets/logo/voice.svg"
+          width="40"
+          height="40"
+          class="voice_svg"
+        />
       </div>
       <button class="send_btn" @click="sendMessage()">
         <img src="../assets/logo/send.svg" width="40" height="40" />
@@ -28,6 +33,9 @@ import { ref, computed, watch, defineProps, defineEmits } from "vue";
 import Upload from "@/components/upload.vue";
 import axios from "axios";
 import { getAuth } from "firebase/auth";
+import { useBotAudio } from "@/composables/useBotAudio";
+
+const botAudio = useBotAudio();
 
 const emit = defineEmits([
   "updateMessages",
@@ -54,9 +62,18 @@ const displayedMessages = computed(() =>
   isUsingLocal.value ? localMessages.value : props.messages
 );
 function appendMessage(message) {
-  if (isUsingLocal.value) localMessages.value.push(message);
-  else emit("updateMessages", message);
+  console.log("本地嗎?", isUsingLocal.value);
+  console.log("append的訊息內容", message);
+  if (isUsingLocal.value) {
+    localMessages.value.push(message);
+  } else {
+    console.log("update的訊息內容", message);
+    emit("updateMessages", message);
+  }
 }
+
+// 產生訊息 id（給音訊控制器標記是哪一則）
+const newMsgId = () => crypto?.randomUUID?.() || Date.now().toString();
 
 // ====== 輸入框 & initialText 自動送出 ======
 const inputText = ref(props.initialText);
@@ -78,78 +95,109 @@ watch(
 
 // ====== 發送訊息（自己也能送，顯示在首頁）======
 const sending = ref(false);
+// 在 chat_bottom.vue 的 sendMessage 中修改邏輯
 const sendMessage = async (forcedText) => {
   if (sending.value) return;
-  const raw =
-    typeof forcedText === "string" ? forcedText : inputText.value ?? "";
+  const raw = typeof forcedText === "string" ? forcedText : inputText.value ?? "";
   const text = String(raw).trim();
   if (!text) return;
 
   sending.value = true;
   inputText.value = "";
-  appendMessage({ role: "user", text }); // ✅ 先把自己的訊息顯示出來（父層會 push 到 dialog_wrapper）
-  emit("show"); // 送出時打開右側
+  
+  // ✅ 先發送用戶訊息
+  appendMessage({ role: "user", text });
+  emit("show"); // 這會導致 ChatBottom 被銷毀
+
+  // ⚠️ 關鍵：在發送請求前先保存必要的方法引用
+  const safeEmit = emit;
+  const safeAppendMessage = appendMessage;
 
   try {
-    // 如需驗證可啟用：
     const auth = getAuth();
-    const token = await getAuth().currentUser?.getIdToken();
+    const token = await auth.currentUser?.getIdToken();
     const headers = { Authorization: token };
 
-    // ✅ 先嘗試用現有 convId：父層 props 或 sessionStorage
-    let convId =
-      props.currentConversationId ||
-      sessionStorage.getItem("conversation_id") ||
-      null;
+    let convId = props.currentConversationId || 
+                 sessionStorage.getItem("conversation_id") || null;
 
     if (!convId) {
-      // 🟢 沒有 id：先建立對話
+      // 新建對話
       const res = await axios.post(
         "http://localhost:5000/gpt/start_conversation",
         { initial_message: text },
         { headers }
       );
-      const newId = res.data.conversation_id;
-      emit("updateConversationId", newId); // ✅ 交給父層存
       convId = res.data.conversation_id;
-      // 同步給父層 & 存到 sessionStorage，之後其他頁也能接
-      emit("updateConversationId", convId);
+      
+      // 立即更新 conversation_id，不依賴組件存在
       sessionStorage.setItem("conversation_id", convId);
-
-      appendMessage({ role: "bot", text: res.data.reply }); // 立刻顯示 bot 回覆
+      
+      // ✅ 重要：直接通過 emit 發送，不經過 appendMessage
+      const botId = newMsgId();
+      const botMessage = { 
+        role: "bot", 
+        id: botId, 
+        text: res.data.reply,
+        conversation_id: convId,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log("直接 emit 機器人訊息 (新對話):", botMessage);
+      safeEmit("updateMessages", botMessage);
+      safeEmit("updateConversationId", convId);
+      
+      // TTS 播放
+      try {
+        await botAudio.play(res.data.reply, botId);
+      } catch (e) {
+        console.warn("TTS 播放失敗", e);
+      }
+      
     } else {
-      // 🟢 有 id：延續對話
+      // 延續對話
       const res = await axios.post(
         "http://localhost:5000/gpt/ask",
         { message: text, conversation_id: convId },
         { headers }
       );
-      appendMessage({ role: "bot", text: res.data.reply });
+
+      // ✅ 重要：直接通過 emit 發送，不經過 appendMessage
+      const botId = newMsgId();
+      const botMessage = { 
+        role: "bot", 
+        id: botId, 
+        text: res.data.reply,
+        conversation_id: res.data.conversation_id || convId,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log("直接 emit 機器人訊息 (延續對話):", botMessage);
+      safeEmit("updateMessages", botMessage);
+
+      // TTS 播放
+      try {
+        await botAudio.play(res.data.reply, botId);
+      } catch (e) {
+        console.warn("TTS 播放失敗", e);
+      }
     }
   } catch (err) {
     console.error("GPT 回覆失敗", err);
-    appendMessage({ role: "bot", text: "發生錯誤，請稍後再試。" });
+    
+    // 錯誤訊息也直接 emit
+    const errorMessage = { 
+      role: "bot", 
+      text: "發生錯誤，請稍後再試。",
+      id: newMsgId(),
+      timestamp: new Date().toISOString()
+    };
+    safeEmit("updateMessages", errorMessage);
   } finally {
     sending.value = false;
   }
 };
 
-//機器人語音回復
-const speak = async (text) => {
-  try {
-    const res = await axios.post("http://localhost:5000/routes/tts", {
-      text: text, // 這裡後端要能接受 raw text
-    });
-
-    const audioPath = res.data.file;
-    const audio = new Audio(
-      `http://localhost:5000/dir_tts_result/${audioPath}`
-    );
-    audio.play();
-  } catch (err) {
-    console.error("語音播放失敗：", err);
-  }
-};
 const isRecording = ref(false);
 
 let audioContext, source, processor, audioData;
@@ -169,6 +217,8 @@ const toggleRecording = async () => {
 
   // ✅ 開始錄音
   try {
+    botAudio.stop();
+
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
     source = audioContext.createMediaStreamSource(stream);
@@ -254,11 +304,12 @@ async function uploadAndSend(blob) {
 
     const transcript = sttRes.data.transcript;
     const filepath = sttRes.data.file;
-    const conversationID = sessionStorage.getItem("conversation_id")
+    const conversationID = sessionStorage.getItem("conversation_id");
 
     // 🟢 只在這裡發送 GPT，避免再觸發 watch or props
     appendMessage({ role: "user", text: transcript });
-    emit("show"); // 加在 uploadAndSend 的最後
+    emit("show");
+
     const gptRes = await axios.post(
       "http://localhost:5000/gpt/ask_from_stt",
       {
@@ -270,46 +321,31 @@ async function uploadAndSend(blob) {
     );
 
     const botReply = gptRes.data.reply;
+    const replyText =
+      typeof botReply === "string"
+        ? botReply
+        : botReply?.reply ?? botReply?.text ?? JSON.stringify(botReply);
 
-    appendMessage({ role: "bot", text: botReply.reply });
-    await speak(botReply.reply);
+    // 顯示 bot 訊息並播放（統一交給 audioManager 的 tts channel）
+    const botId = newMsgId();
+    appendMessage({ role: "bot", id: botId, text: replyText });
+    await botAudio.play(replyText, botId);
   } catch (err) {
     console.error("語音處理錯誤", err);
     appendMessage({ role: "bot", text: "語音處理失敗，請稍後再試。" });
   }
 }
-/*
-async function uploadAndSend(blob) {
-  const filename = `voice_${Date.now()}.wav`;
-  const formData = new FormData();
-  formData.append("file", blob, filename);
-
-  try {
-    await axios.post("http://localhost:5000/routes/upload_audio", formData);
-    const sttRes = await axios.post("http://localhost:5000/routes/stt", {
-      filename,
-    });
-    emit("updateMessages", { role: "user", text: sttRes.data.transcript });
-    const filepath = sttRes.data.file;
-
-    const gptRes = await axios.post("http://localhost:5000/gpt/ask_from_stt", {
-      filepath,
-      user_id: "test_user",
-    });
-    emit("sendWithText", sttRes.data.transcript, true); // 加在 uploadAndSend 的最後
-    const botReply = gptRes.data.reply;
-
-    emit("updateMessages", { role: "bot", text: botReply.reply });
-    console.log("語音回覆內容：", botReply);
-    await speak(botReply.reply); // 🟢 只取出文字回應
-  } catch (err) {
-    console.error("語音處理錯誤", err);
-  }
-}
-  */
 </script>
 
 <style scoped>
+.recording_hint {
+  position: absolute;
+  background-color: #ffffff;
+  padding: 20px 40px;
+  z-index: 999;
+  bottom: 500px;
+  border-radius: 10px;
+}
 .file_progessing {
   position: fixed;
   top: 10%;
@@ -393,10 +429,19 @@ input[type="file"] {
 .voice_btn,
 .upload_btn,
 .send_btn {
+  width: 40px;
+  height: 40px;
   display: flex;
   justify-content: center;
   border: 0;
   background-color: transparent;
   border-radius: 50%;
+  padding: 0px;
+  margin: 2px 0px;
+}
+
+.upload_btn:hover,
+.send_btn:hover {
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3); /* 懸停時增加陰影 */
 }
 </style>

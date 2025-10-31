@@ -1,3 +1,4 @@
+<!-- robot -->
 <template>
   <div class="robot">
     <canvas ref="liveCanvas" width="100%"></canvas>
@@ -232,7 +233,7 @@ function Speak_1_end(repeatCount = 5) {
 
 // 說話(無揮手)動作
 function Speak_2(repeatCount = 5) {
-  return playMotionGroupWithRepeat([18], [11, repeatCount], [12], "說話");
+  return playMotionGroupWithRepeat([11], [11, repeatCount], [11], "說話");
 }
 
 // 說話(無揮手)動作
@@ -249,6 +250,7 @@ defineExpose({
   SayHi,
   startIdleLoop, // ✅ 加這行
   stopIdleLoop, // ✅ 也暴露出來給外面可叫用
+  Speak_2
 });
 </script>
 

@@ -1,8 +1,12 @@
+<!-- home -->
 <template>
   <div class="container">
     <div :style="backgroundStyle" class="room_image"></div>
     <Robot ref="robotRef" />
-    <Function @openConversation="handleOpenConversation" />
+    <Function
+      @openConversation="handleOpenConversation"
+      @titleUpdated="handleTitleUpdated"
+    />
     <div class="chatting">
       <div class="default" v-if="!isChatOpen">
         <button class="d1" @click="setInputText('明天要考試了好焦慮...')">
@@ -19,21 +23,50 @@
         </button>
       </div>
 
-      <div v-if="isChatOpen" class="dialog_wrapper" ref="dialogWrapper">
-        <div class="title" v-if="currentTitle">{{ currentTitle }}</div>
-        <div
-          v-for="(msg, i) in messages"
-          :key="i"
-          :class="['bubble', msg.role]"
-        >
-          <img
-            :src="msg.role === 'bot' ? botAvatar : userAvatar"
-            class="avatar"
-          />
-          <div class="text">{{ msg.text }}</div>
+      <!-- 總結提示 -->
+      <div v-if="isSummary" class="summary_hint">總結中... 請稍後</div>
+
+      <div v-if="isChatOpen" class="home_chatting_container">
+        <div class="header">
+          <div class="title" v-if="currentTitle">
+            {{ currentTitle }}
+          </div>
+          <div class="tool_btn">
+            <button class="summary_btn" @click="summarizeConversation">
+              總結對話
+            </button>
+            <button class="reset_btn" @click="confirmReset">開新對話</button>
+          </div>
         </div>
-        <!-- 我加了這個! -->
-        <button @click="summarizeConversation">總結對話</button>
+        <div class="dialog_wrapper" ref="dialogWrapper">
+          <div
+            v-for="(msg, i) in messages"
+            :key="i"
+            :class="['bubble', msg.role]"
+          >
+            <div class="leftArea">
+              <img
+                :src="msg.role === 'bot' ? botAvatar : userAvatar"
+                class="avatar"
+              />
+              <!-- 只有正在播放的 bot 訊息，才顯示停止鈕 -->
+              <div
+                v-if="
+                  msg.role === 'bot' && msg.id === currentMsgId && isPlaying
+                "
+                class="tts-controls"
+              >
+                <button class="stop_btn" @click="stop">⏹ 停止語音</button>
+              </div>
+            </div>
+            <div
+              class="text"
+              v-if="msg.role === 'bot'"
+              v-html="renderMarkdown(msg.text)"
+            ></div>
+            <div class="text" v-else>{{ msg.text }}</div>
+          </div>
+        </div>
       </div>
       <chat_bottom
         :initialText="inputText"
@@ -51,11 +84,10 @@
       <div v-if="toastVisible" class="toast">{{ toastMessage }}</div>
     </div>
   </div>
-  <audio ref="greetingAudio"></audio>
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted, onActivated } from "vue";
+import { ref, watch, nextTick, onMounted, onActivated, onUnmounted } from "vue";
 import Robot from "@/components/Robot.vue";
 import Function from "@/components/function.vue";
 import roomImage from "@/assets/image/room4.png";
@@ -65,108 +97,385 @@ import userAvatar from "@/assets/image/avatar_user.svg";
 import Greet1 from "@/assets/audio/welcome_01.wav";
 import Greet2 from "@/assets/audio/welcome_02.wav";
 import Greet3 from "@/assets/audio/welcome_03.wav";
+import downUrl from "@/assets/audio/head_down.wav";
+import upUrl from "@/assets/audio/head_up.wav";
 import axios from "axios";
+import { useWebGazer } from "@/composables/useWebGazer";
+import { useBotAudio } from "@/composables/useBotAudio";
+import { audioManager } from "@/composables/audioManager.js";
+const { currentMsgId, isPlaying, stop } = useBotAudio();
 
-// ✅ 定義角色正規化函式
-const normalizeRole = (r) => {
-  return (r === "assistant" || r === "system" || r === "bot")
-    ? "bot"
-    : "user";
-};
+// 角色正規化
+const normalizeRole = (r) =>
+  r === "assistant" || r === "system" || r === "bot" ? "bot" : "user";
 
 const backgroundStyle = ref({
-  backgroundImage: `url(${roomImage})`, // 使用導入的圖片路徑
-  backgroundPosition: "center", // 置中
+  backgroundImage: `url(${roomImage})`,
+  backgroundPosition: "center",
 });
 
+//處理文字顯示
+import MarkdownIt from "markdown-it";
+import DOMPurify from "dompurify";
+
+const md = new MarkdownIt({
+  breaks: true, // 讓 \n 變換行
+  linkify: true, // 自動把網址變連結
+  html: false, // 禁止原生 HTML（配合 DOMPurify 更安全）
+});
+
+function renderMarkdown(raw = "") {
+  const html = md.render(String(raw));
+  // 可選：限制允許的標籤（更嚴格）
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "p",
+      "br",
+      "strong",
+      "em",
+      "ul",
+      "ol",
+      "li",
+      "code",
+      "pre",
+      "blockquote",
+      "a",
+    ],
+    ALLOWED_ATTR: ["href", "title", "target", "rel"],
+  });
+}
+
 const isChatOpen = ref(false);
-const inputText = ref(""); // 預設傳進 chat_bottom 的文字
-const messages = ref([]); // 所有訊息紀錄
+const inputText = ref("");
+const messages = ref([]);
 
 const toastMessage = ref("");
 const toastVisible = ref(false);
-
 const hasGreeted = ref(false);
 const gazeCheckEnabled = ref(false);
+const currentTitle = ref("");
 
 function showToast(message, duration = 10000) {
   toastMessage.value = message;
   toastVisible.value = true;
-  setTimeout(() => {
-    toastVisible.value = false;
-  }, duration);
+  setTimeout(() => (toastVisible.value = false), duration);
 }
 
-const currentTitle = ref("");
+// --- 放在頂層：控制動畫狀態 & 工具函式 ---
+let isHiAnimating = false; // 防止重入（一次只跑一個 SayHi 流程）
+const HI_COOLDOWN = 1200; // 節流：避免頻繁觸發
+let lastHiAt = 0;
+
+async function playUpWithHi() {
+  const now = Date.now();
+  if (now - lastHiAt < HI_COOLDOWN) return;
+  lastHiAt = now;
+  if (isHiAnimating) return;
+  isHiAnimating = true;
+
+  try {
+    if (robotRef.value?.stopIdleLoop) robotRef.value.stopIdleLoop();
+
+    // 音效 + SayHi 並行（不需等音檔結束）
+    await Promise.all([
+      audioManager
+        .play({
+          channel: "sfx",
+          src: upUrl,
+          duckOthers: false,
+          fadeInMs: 40,
+        })
+        .catch(() => {}),
+      robotRef.value?.SayHi ? robotRef.value.SayHi() : Promise.resolve(),
+    ]);
+  } finally {
+    if (robotRef.value?.startIdleLoop) robotRef.value.startIdleLoop();
+    isHiAnimating = false;
+  }
+}
+
+// Live2D 機器人
+const robotRef = ref(null);
+const motionSet = (fn) => fn();
+
+// ✅ 新增：TTS 語音動畫聯動（與 quiz 相同邏輯）
+let lastToggleAt = 0;
+const TOGGLE_COOLDOWN = 120; // 防止極短音檔抖動
+let currentSpeakLoop = null; // ✅ 記錄當前說話循環
+
+// ✅ 持續說話動作（直到語音停止）
+async function startSpeakLoop() {
+  if (currentSpeakLoop) return; // 防止重複啟動
+  
+  currentSpeakLoop = async () => {
+    while (isPlaying.value) {
+      if (robotRef.value?.Speak_2) {
+        try {
+          await robotRef.value.Speak_2(3); // 每次重複3次
+        } catch {}
+      }
+      // 檢查是否還在播放，避免不必要的等待
+      if (!isPlaying.value) break;
+      await wait(100); // 短暫間隔後繼續
+    }
+    currentSpeakLoop = null; // 清除循環標記
+  };
+  
+  currentSpeakLoop();
+}
+
+function stopSpeakLoop() {
+  currentSpeakLoop = null;
+}
+
+// ✅ 監聽 TTS 狀態變化
+watch(
+  isPlaying,
+  async (nowPlaying) => {
+    const now = Date.now();
+    if (now - lastToggleAt < TOGGLE_COOLDOWN) return;
+    lastToggleAt = now;
+
+    if (nowPlaying) {
+      // TTS 開始：停 idle → 開始持續說話動作
+      try { 
+        if (robotRef.value?.stopIdleLoop) robotRef.value.stopIdleLoop();
+      } catch {}
+      
+      // ✅ 啟動持續說話循環
+      startSpeakLoop();
+    } else {
+      // TTS 結束：停止說話循環 → 回 idle
+      stopSpeakLoop();
+      
+      try { 
+        if (robotRef.value?.startIdleLoop) robotRef.value.startIdleLoop();
+      } catch {}
+    }
+  },
+  { immediate: false }
+);
+
+// 等待工具
+function wait(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+const currentConversationId = ref(null);
+const handleNewConversationId = (id) => (currentConversationId.value = id);
 
 const handleOpenConversation = ({ conversationId, title, messages: hist }) => {
   currentConversationId.value = conversationId;
   currentTitle.value = title || "";
-  messages.value = (hist || []).map(m => ({
-    role: normalizeRole(m.role),         // ✅ 統一角色
-    text: m.text ?? m.content ?? '',
-    timestamp: m.timestamp
+  messages.value = (hist || []).map((m) => ({
+    role: normalizeRole(m.role),
+    text: m.text ?? m.content ?? "",
+    timestamp: m.timestamp,
   }));
-  isChatOpen.value = true; // ✅ 展開底部對話框
-
-  // ✅ 捲到底（你原本就有 watch，也可以保留）
+  isChatOpen.value = true;
   nextTick(() => {
-    dialogWrapper.value &&
-      (dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight);
+    if (dialogWrapper.value)
+      dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
   });
 };
 
+const handleTitleUpdated = ({ conversationId, title }) => {
+  // 只有當前開著的這筆剛好被改名，才更新抬頭
+  if (currentConversationId.value === conversationId) {
+    currentTitle.value = title;
+  }
+  // 同步 sessionStorage（讓其他頁 or 回到本頁時能接續新標題）
+  if (sessionStorage.getItem("conversation_id") === conversationId) {
+    sessionStorage.setItem("conversation_title", title);
+  }
+};
+
 const addMessage = (msg) => {
-  console.log("收到訊息：", msg);
   messages.value.push(msg);
   isChatOpen.value = true;
 };
 
-//我加了一個滾輪
 const setInputText = (msg) => {
   inputText.value = msg;
-
-  // ✅ 點下預設訊息後，自動展開聊天室
-  if (!isChatOpen.value) {
-    isChatOpen.value = true;
-  }
-
-  // ✅ 下一幀滾到底部（確保畫面渲染完再滾）
+  if (!isChatOpen.value) isChatOpen.value = true;
   nextTick(() => {
-    if (dialogWrapper.value) {
+    if (dialogWrapper.value)
       dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
-    }
   });
 };
-// const setInputText = (msg) => {
-//   inputText.value = msg;
-// };
 
-const currentConversationId = ref(null);
-const handleNewConversationId = (id) => {
-  currentConversationId.value = id;
-};
-
-// ✅ 依 conversationId 載入歷史
 const loadConversationById = async (conversationId) => {
   if (!conversationId) return;
   try {
-    const token = localStorage.getItem("token"); // 或用 Firebase getIdToken()
+    const token = localStorage.getItem("token");
     const res = await axios.post(
       "http://localhost:5000/gpt/get_conversation",
       { conversation_id: conversationId },
       { headers: { Authorization: token } }
     );
-
-    const hist = (res.data.messages || []).map(m => ({
+    const hist = (res.data.messages || []).map((m) => ({
       role: normalizeRole(m.role),
       text: m.text ?? m.content ?? "",
-      timestamp: m.timestamp
+      timestamp: m.timestamp,
     }));
-
     currentConversationId.value = conversationId;
     currentTitle.value = res.data.title || currentTitle.value || "";
     messages.value = hist;
+    isChatOpen.value = true;
+    await nextTick();
+    if (dialogWrapper.value)
+      dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
+  } catch (err) {
+    console.error("❌ home 載入歷史失敗", err);
+  }
+};
+
+const tryLoadFromSession = () => {
+  const convId = sessionStorage.getItem("conversation_id");
+  if (convId) loadConversationById(convId);
+  const savedTitle = sessionStorage.getItem("conversation_title");
+  if (savedTitle) currentTitle.value = savedTitle;
+};
+onMounted(tryLoadFromSession);
+if (onActivated) onActivated(tryLoadFromSession);
+
+// （可選）簡易節流，避免疊音
+let lastDownAt = 0;
+const THROTTLE = 1000;
+function playDownThrottled() {
+  const now = Date.now();
+  if (now - lastDownAt > THROTTLE) {
+    lastDownAt = now;
+    audioManager
+      .play({
+        channel: "sfx",
+        src: downUrl,
+        duckOthers: false,
+        fadeInMs: 40,
+      })
+      .catch(() => {});
+  }
+}
+
+// 問候語音
+const greetingAudios = [Greet1, Greet2, Greet3];
+const pageGreetingKey = "greeted:home";
+
+onMounted(() => {
+  // 若已問候過，僅啟用視線偵測
+  if (sessionStorage.getItem(pageGreetingKey)) {
+    gazeCheckEnabled.value = true;
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * greetingAudios.length);
+  const selectedGreeting = greetingAudios[randomIndex];
+
+  const handler = async (event) => {
+    // 點到小精靈就不播
+    if (event?.target?.closest?.(".elf-button")) {
+      window.removeEventListener("click", handler);
+      gazeCheckEnabled.value = true;
+      return;
+    }
+
+    // ✅ 使用 audioManager 播放問候語（不 duck 其他）
+    await audioManager.play({
+      channel: "greeting",
+      src: selectedGreeting,
+      duckOthers: false,
+      fadeInMs: 120,
+      onStart: () => {
+        if (randomIndex === 0) showToast("哈囉哈囉!最近一切順利嗎?");
+        if (randomIndex === 1) showToast("今天過得如何呀?");
+        if (randomIndex === 2) showToast("嗨嗨!讓我來陪你複習英文吧!");
+      },
+    });
+
+    // Live2D 打招呼（與問候音可並行）
+    if (robotRef.value?.stopIdleLoop) robotRef.value.stopIdleLoop();
+    if (robotRef.value?.SayHi) await robotRef.value.SayHi();
+    if (robotRef.value?.startIdleLoop) robotRef.value.startIdleLoop();
+
+    sessionStorage.setItem(pageGreetingKey, "true"); // 只播一次
+    window.removeEventListener("click", handler);
+    gazeCheckEnabled.value = true;
+  };
+
+  window.addEventListener("click", handler);
+});
+
+const dialogWrapper = ref(null);
+watch([() => messages.value.length, () => isChatOpen.value], async () => {
+  await nextTick();
+  if (dialogWrapper.value)
+    dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
+});
+
+// WebGazer 回呼：把 down/up.play() 改為播放實例（或用節流版）
+const { isLooking, gazeX, gazeY } = useWebGazer(
+  (data, timestamp) => {
+    if (!gazeCheckEnabled.value) return;
+    console.log("視線更新:", data.x.toFixed(2), data.y.toFixed(2));
+  },
+  () => {
+    if (!gazeCheckEnabled.value) return;
+    showToast("你認真讀書的樣子真棒！加油加油!");
+    // playAudio(downAudio);
+    playDownThrottled();
+  },
+  () => {
+    if (!gazeCheckEnabled.value) return;
+    showToast("你回來啦～有什麼需要我幫忙的嗎？");
+    // playAudio(upAudio);
+    playUpWithHi();
+  }
+);
+
+const isSummary = ref(false);
+// 重點整理
+const summarizeConversation = async () => {
+  try {
+    isSummary.value = true;
+    const res = await axios.post(
+      "http://localhost:5000/gpt/summarize",
+      { conversation_id: currentConversationId.value },
+      { headers: { Authorization: localStorage.getItem("token") } }
+    );
+    const summary = res.data.summary;
+    isSummary.value = false;
+    messages.value.push({ role: "bot", text: "✅ 摘要完成" });
+  } catch (err) {
+    console.error("❌ 摘要失敗：", err.response?.data || err.message);
+    messages.value.push({ role: "bot", text: "❌ 摘要失敗，請稍後再試。" });
+  }
+};
+
+// 開新對話
+// 開新對話（與 chatRight 相同邏輯）
+const confirmReset = async () => {
+  const wantsSummary = window.confirm(
+    "你想在開始新對話前，先總結目前的對話紀錄嗎？"
+  );
+  try {
+    if (wantsSummary) await summarizeConversation();
+
+    const res = await axios.post(
+      "http://localhost:5000/gpt/reset",
+      {},
+      { headers: { Authorization: localStorage.getItem("token") } }
+    );
+
+    const newId = res.data.conversation_id;
+    const newTitle = res.data.title || "";
+    // ✅ 同步前端狀態與 sessionStorage
+    currentConversationId.value = newId;
+    currentTitle.value = newTitle;
+    sessionStorage.setItem("conversation_id", newId);
+
+    // 清空畫面訊息，給提示
+    messages.value = [];
+    messages.value.push({ role: "bot", text: "🆕 已開啟新的對話！" });
     isChatOpen.value = true;
 
     await nextTick();
@@ -174,150 +483,66 @@ const loadConversationById = async (conversationId) => {
       dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
     }
   } catch (err) {
-    console.error("❌ home 載入歷史失敗", err);
+    console.error("開啟新對話失敗", err);
+    messages.value.push({ role: "bot", text: "開啟新對話失敗，請稍後再試。" });
   }
 };
 
-// ✅ 進到 home（或從 keep-alive 喚醒）時，自動接續 sessionStorage 的對話
-const tryLoadFromSession = () => {
-  const convId = sessionStorage.getItem("conversation_id");
-  if (convId) loadConversationById(convId);
-};
-
-onMounted(tryLoadFromSession);
-onActivated?.(tryLoadFromSession); // 若 home 被 <keep-alive> 包住才會觸發
-
-const greetingAudio = ref(null);
-const greetingAudios = [Greet1, Greet2, Greet3];
-
-const robotRef = ref(null);
-const motionSet = (fn) => {
-  fn();
-};
-
-
-onMounted(async () => {
-  const randomIndex = Math.floor(Math.random() * greetingAudios.length);
-  const selectedGreeting = greetingAudios[randomIndex];
-
-  const audio = greetingAudio.value;
-  audio.src = selectedGreeting;
-  audio.volume = 1;
-
-  const handler = async () => {
-    audio.play();
-
-    if (randomIndex == 0) {
-      showToast("哈囉哈囉!最近一切順利嗎?");
-    }
-
-    if (randomIndex == 1) {
-      showToast("今天過得如何呀?");
-    }
-
-    if (randomIndex == 2) {
-      showToast("嗨嗨!讓我來陪你複習英文吧!");
-    }
-
-    // 停掉 idle
-    robotRef.value?.stopIdleLoop();
-    await robotRef.value?.SayHi(); // ✅ 等它播完
-    robotRef.value?.startIdleLoop(); // ✅ 播完再手動接回 idle
-
-    console.log("✅ 播放語音檔：", selectedGreeting, randomIndex);
-    window.removeEventListener("click", handler); // 移除監聽器
-    gazeCheckEnabled.value = true;
-  };
-  window.addEventListener("click", handler);
+onUnmounted(() => {
+  // 停掉語音類
+  audioManager.stop("greeting");
+  audioManager.stop("tts");
 });
-
-const dialogWrapper = ref(null);
-
-watch([() => messages.value.length, () => isChatOpen.value], async () => {
-  await nextTick();
-  if (dialogWrapper.value) {
-    dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
-  }
-});
-
-import { useWebGazer } from "@/composables/useWebGazer";
-
-// 從 hook 裡取得 gaze 資料 & 狀態
-const { isLooking, gazeX, gazeY } = useWebGazer(
-  (data, timestamp) => {
-    console.log("視線更新:", data.x.toFixed(2), data.y.toFixed(2));
-    if (!gazeCheckEnabled.value) return;
-  },
-  () => {
-    if (!gazeCheckEnabled.value) return;
-    console.log("看不到你了");
-    showToast("你是不是低頭了？讀書加油喔！");
-  },
-  () => {
-    if (!gazeCheckEnabled.value) return;
-    console.log("抬頭啦");
-    showToast("你回來啦～要我幫忙嗎？");
-  }
-);
-
-//重點整理
-const summarizeConversation = async () => {
-  console.log("📌 summary 送出時的 conversation_id：", currentConversationId.value);
-
-  try {
-    const res = await axios.post("http://localhost:5000/gpt/summarize", {
-      conversation_id: currentConversationId.value,
-    }, {
-      headers: {
-        Authorization: localStorage.getItem("token"),
-      },
-    });
-
-    const summary = res.data.summary;
-    console.log("✅ 摘要成功：");
-
-    messages.value.push({
-      role: "bot",
-      text: `✅ 摘要完成`
-    });
-
-  } catch (err) {
-    console.error("❌ 摘要失敗：", err.response?.data || err.message);
-    messages.value.push({
-      role: "bot",
-      text: "❌ 摘要失敗，請稍後再試。",
-    });
-  }
-};
-
-
-/*
-畫面載入後先說幾句話，延後啟用 gaze 偵測
-onMounted(async () => {
-  setTimeout(async () => {
-    // 停掉 idle
-    robotRef.value?.stopIdleLoop();
-
-    // 播完再接回 idle
-    await robotRef.value?.SayHi(); // ✅ 等它播完
-    robotRef.value?.startIdleLoop(); // ✅ 播完再手動接回 idle
-  }, 300);
-
-  showToast("哈囉哈囉!最近一切順利嗎?");
-  setTimeout(() => {
-    showToast("有我陪你一起讀書喔！");
-  }, 3500);
-  setTimeout(() => {
-    showToast("需要幫忙隨時跟我說～");
-    gazeCheckEnabled.value = true;
-  }, 7000);
-});
-*/
-
-
 </script>
 
 <style scoped>
+.summary_hint {
+  position: absolute;
+  background-color: #ffffff;
+  padding: 20px 40px;
+  z-index: 999;
+  bottom: 500px;
+  border-radius: 10px;
+}
+
+.home_chatting_container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.header {
+  position: absolute;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  font-weight: 600;
+  bottom: 370px;
+  width: 90%;
+  background-color: #d1c5bd;
+  padding: 5px 15px;
+  text-align: center;
+}
+
+.tool_btn {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.summary_btn,
+.reset_btn {
+  border: 0px;
+  background-color: #e8e1dc;
+  width: 150px;
+  font-size: 14px;
+}
+
+.summary_btn:hover,
+.reset_btn:hover {
+  box-shadow: 1px 1px 20px #acacac;
+}
+
 .toggle_btn {
   position: absolute;
   bottom: 46px; /* 根據 dialog_wrapper 高度微調 */
@@ -374,6 +599,30 @@ onMounted(async () => {
   width: 100%;
   position: relative;
 }
+
+.leftArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tts-controls {
+  margin-top: 4px;
+}
+.stop_btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: #ff6b6b;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  width: 28px;
+}
+.stop_btn:hover {
+  opacity: 0.85;
+}
+
 .default {
   z-index: 0;
   display: flex;
@@ -402,14 +651,13 @@ onMounted(async () => {
   position: absolute;
   bottom: 100px;
   width: 90%;
-  height: 220px; /* ❗根據畫面大小調整 */
+  height: 250px; /* ❗根據畫面大小調整 */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 10px;
   background: rgba(255, 255, 255, 0.75);
   padding: 10px 15px;
-  border-radius: 12px;
   scroll-behavior: smooth;
 }
 .bubble {
