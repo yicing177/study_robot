@@ -13,6 +13,14 @@ export default defineConfig({
   define: {
     global: {},
   },
+  server: {
+    proxy: {
+      "/gpt": { target: "http://localhost:5000", changeOrigin: true },
+      "/routes": { target: "http://localhost:5000", changeOrigin: true },
+      "/material": { target: "http://localhost:5000", changeOrigin: true },
+      "/calendar": { target: "http://localhost:5000", changeOrigin: true },
+    },
+  },
 });
 
 

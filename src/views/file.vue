@@ -203,31 +203,9 @@ const handleUpdateConversationId = (id) => {
 const user_id = localStorage.getItem("user_id"); // ✅ 加這行
 
 const addMessage = (msg) => {
-  console.log("🔥 file.vue addMessage 收到訊息:", msg); // 除錯用
-
-  // 確保訊息格式正確
-  const normalizedMsg = {
-    role: normalizeRole(msg.role),
-    text: msg.text || msg.content || "",
-    id: msg.id || `msg_${Date.now()}_${Math.random()}`,
-    timestamp: msg.timestamp || new Date().toISOString(),
-  };
-
-  // 更新訊息陣列並強制重新渲染
-  messages.value = [...messages.value, normalizedMsg];
-  console.log("📝 更新後的 messages:", messages.value);
-
-  // 確保右側面板開啟
+  console.log("file.vue收到的msg",msg)
+  messages.value.push(msg); // 不用再加 { role: ..., text: ... }，因為子元件已經是處理好的物件
   showChatRight.value = true;
-
-  // 強制重新渲染 ChatRight（通過改變 key）
-  chatKey.value += 1;
-  console.log("🔄 強制重新渲染 ChatRight，新的 key:", chatKey.value);
-
-  // 如果有 conversation_id 更新，也要同步
-  if (msg.conversation_id) {
-    handleUpdateConversationId(msg.conversation_id);
-  }
 };
 
 const props = defineProps({

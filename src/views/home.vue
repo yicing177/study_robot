@@ -1,8 +1,12 @@
+<!-- home -->
 <template>
   <div class="container">
     <div :style="backgroundStyle" class="room_image"></div>
     <Robot ref="robotRef" />
-    <Function @openConversation="handleOpenConversation" />
+    <Function
+      @openConversation="handleOpenConversation"
+      @titleUpdated="handleTitleUpdated"
+    />
     <div class="chatting">
       <div class="default" v-if="!isChatOpen">
         <button class="d1" @click="setInputText('明天要考試了好焦慮...')">
@@ -190,6 +194,73 @@ async function playUpWithHi() {
   }
 }
 
+// Live2D 機器人
+const robotRef = ref(null);
+const motionSet = (fn) => fn();
+
+// ✅ 新增：TTS 語音動畫聯動（與 quiz 相同邏輯）
+let lastToggleAt = 0;
+const TOGGLE_COOLDOWN = 120; // 防止極短音檔抖動
+let currentSpeakLoop = null; // ✅ 記錄當前說話循環
+
+// ✅ 持續說話動作（直到語音停止）
+async function startSpeakLoop() {
+  if (currentSpeakLoop) return; // 防止重複啟動
+  
+  currentSpeakLoop = async () => {
+    while (isPlaying.value) {
+      if (robotRef.value?.Speak_2) {
+        try {
+          await robotRef.value.Speak_2(3); // 每次重複3次
+        } catch {}
+      }
+      // 檢查是否還在播放，避免不必要的等待
+      if (!isPlaying.value) break;
+      await wait(100); // 短暫間隔後繼續
+    }
+    currentSpeakLoop = null; // 清除循環標記
+  };
+  
+  currentSpeakLoop();
+}
+
+function stopSpeakLoop() {
+  currentSpeakLoop = null;
+}
+
+// ✅ 監聽 TTS 狀態變化
+watch(
+  isPlaying,
+  async (nowPlaying) => {
+    const now = Date.now();
+    if (now - lastToggleAt < TOGGLE_COOLDOWN) return;
+    lastToggleAt = now;
+
+    if (nowPlaying) {
+      // TTS 開始：停 idle → 開始持續說話動作
+      try { 
+        if (robotRef.value?.stopIdleLoop) robotRef.value.stopIdleLoop();
+      } catch {}
+      
+      // ✅ 啟動持續說話循環
+      startSpeakLoop();
+    } else {
+      // TTS 結束：停止說話循環 → 回 idle
+      stopSpeakLoop();
+      
+      try { 
+        if (robotRef.value?.startIdleLoop) robotRef.value.startIdleLoop();
+      } catch {}
+    }
+  },
+  { immediate: false }
+);
+
+// 等待工具
+function wait(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 const currentConversationId = ref(null);
 const handleNewConversationId = (id) => (currentConversationId.value = id);
 
@@ -206,6 +277,17 @@ const handleOpenConversation = ({ conversationId, title, messages: hist }) => {
     if (dialogWrapper.value)
       dialogWrapper.value.scrollTop = dialogWrapper.value.scrollHeight;
   });
+};
+
+const handleTitleUpdated = ({ conversationId, title }) => {
+  // 只有當前開著的這筆剛好被改名，才更新抬頭
+  if (currentConversationId.value === conversationId) {
+    currentTitle.value = title;
+  }
+  // 同步 sessionStorage（讓其他頁 or 回到本頁時能接續新標題）
+  if (sessionStorage.getItem("conversation_id") === conversationId) {
+    sessionStorage.setItem("conversation_title", title);
+  }
 };
 
 const addMessage = (msg) => {
@@ -251,13 +333,11 @@ const loadConversationById = async (conversationId) => {
 const tryLoadFromSession = () => {
   const convId = sessionStorage.getItem("conversation_id");
   if (convId) loadConversationById(convId);
+  const savedTitle = sessionStorage.getItem("conversation_title");
+  if (savedTitle) currentTitle.value = savedTitle;
 };
 onMounted(tryLoadFromSession);
 if (onActivated) onActivated(tryLoadFromSession);
-
-// Live2D 機器人
-const robotRef = ref(null);
-const motionSet = (fn) => fn();
 
 // （可選）簡易節流，避免疊音
 let lastDownAt = 0;
@@ -336,7 +416,7 @@ watch([() => messages.value.length, () => isChatOpen.value], async () => {
 const { isLooking, gazeX, gazeY } = useWebGazer(
   (data, timestamp) => {
     if (!gazeCheckEnabled.value) return;
-    // console.log("視線更新:", data.x.toFixed(2), data.y.toFixed(2));
+    console.log("視線更新:", data.x.toFixed(2), data.y.toFixed(2));
   },
   () => {
     if (!gazeCheckEnabled.value) return;

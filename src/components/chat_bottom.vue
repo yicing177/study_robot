@@ -62,8 +62,14 @@ const displayedMessages = computed(() =>
   isUsingLocal.value ? localMessages.value : props.messages
 );
 function appendMessage(message) {
-  if (isUsingLocal.value) localMessages.value.push(message);
-  else emit("updateMessages", message);
+  console.log("本地嗎?", isUsingLocal.value);
+  console.log("append的訊息內容", message);
+  if (isUsingLocal.value) {
+    localMessages.value.push(message);
+  } else {
+    console.log("update的訊息內容", message);
+    emit("updateMessages", message);
+  }
 }
 
 // 產生訊息 id（給音訊控制器標記是哪一則）
@@ -89,61 +95,104 @@ watch(
 
 // ====== 發送訊息（自己也能送，顯示在首頁）======
 const sending = ref(false);
+// 在 chat_bottom.vue 的 sendMessage 中修改邏輯
 const sendMessage = async (forcedText) => {
   if (sending.value) return;
-  const raw =
-    typeof forcedText === "string" ? forcedText : inputText.value ?? "";
+  const raw = typeof forcedText === "string" ? forcedText : inputText.value ?? "";
   const text = String(raw).trim();
   if (!text) return;
 
   sending.value = true;
   inputText.value = "";
-  appendMessage({ role: "user", text }); // ✅ 先把自己的訊息顯示出來（父層會 push 到 dialog_wrapper）
-  emit("show"); // 送出時打開右側
+  
+  // ✅ 先發送用戶訊息
+  appendMessage({ role: "user", text });
+  emit("show"); // 這會導致 ChatBottom 被銷毀
+
+  // ⚠️ 關鍵：在發送請求前先保存必要的方法引用
+  const safeEmit = emit;
+  const safeAppendMessage = appendMessage;
 
   try {
-    // 如需驗證可啟用：
     const auth = getAuth();
-    const token = await getAuth().currentUser?.getIdToken();
+    const token = await auth.currentUser?.getIdToken();
     const headers = { Authorization: token };
 
-    // ✅ 先嘗試用現有 convId：父層 props 或 sessionStorage
-    let convId =
-      props.currentConversationId ||
-      sessionStorage.getItem("conversation_id") ||
-      null;
+    let convId = props.currentConversationId || 
+                 sessionStorage.getItem("conversation_id") || null;
 
     if (!convId) {
-      // 🟢 沒有 id：先建立對話
+      // 新建對話
       const res = await axios.post(
         "http://localhost:5000/gpt/start_conversation",
         { initial_message: text },
         { headers }
       );
       convId = res.data.conversation_id;
-      // 同步給父層 & 存到 sessionStorage，之後其他頁也能接
-      emit("updateConversationId", convId);
+      
+      // 立即更新 conversation_id，不依賴組件存在
       sessionStorage.setItem("conversation_id", convId);
-
-      // ✅ 顯示 bot 回覆並播放
+      
+      // ✅ 重要：直接通過 emit 發送，不經過 appendMessage
       const botId = newMsgId();
-      appendMessage({ role: "bot", id: botId, text: res.data.reply });
-      await botAudio.play(res.data.reply, botId);
+      const botMessage = { 
+        role: "bot", 
+        id: botId, 
+        text: res.data.reply,
+        conversation_id: convId,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log("直接 emit 機器人訊息 (新對話):", botMessage);
+      safeEmit("updateMessages", botMessage);
+      safeEmit("updateConversationId", convId);
+      
+      // TTS 播放
+      try {
+        await botAudio.play(res.data.reply, botId);
+      } catch (e) {
+        console.warn("TTS 播放失敗", e);
+      }
+      
     } else {
-      // 🟢 有 id：延續對話
+      // 延續對話
       const res = await axios.post(
         "http://localhost:5000/gpt/ask",
         { message: text, conversation_id: convId },
         { headers }
       );
-      // ✅ 顯示 bot 回覆並播放
+
+      // ✅ 重要：直接通過 emit 發送，不經過 appendMessage
       const botId = newMsgId();
-      appendMessage({ role: "bot", id: botId, text: res.data.reply });
-      await botAudio.play(res.data.reply, botId);
+      const botMessage = { 
+        role: "bot", 
+        id: botId, 
+        text: res.data.reply,
+        conversation_id: res.data.conversation_id || convId,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log("直接 emit 機器人訊息 (延續對話):", botMessage);
+      safeEmit("updateMessages", botMessage);
+
+      // TTS 播放
+      try {
+        await botAudio.play(res.data.reply, botId);
+      } catch (e) {
+        console.warn("TTS 播放失敗", e);
+      }
     }
   } catch (err) {
     console.error("GPT 回覆失敗", err);
-    appendMessage({ role: "bot", text: "發生錯誤，請稍後再試。" });
+    
+    // 錯誤訊息也直接 emit
+    const errorMessage = { 
+      role: "bot", 
+      text: "發生錯誤，請稍後再試。",
+      id: newMsgId(),
+      timestamp: new Date().toISOString()
+    };
+    safeEmit("updateMessages", errorMessage);
   } finally {
     sending.value = false;
   }
@@ -281,7 +330,6 @@ async function uploadAndSend(blob) {
     const botId = newMsgId();
     appendMessage({ role: "bot", id: botId, text: replyText });
     await botAudio.play(replyText, botId);
-
   } catch (err) {
     console.error("語音處理錯誤", err);
     appendMessage({ role: "bot", text: "語音處理失敗，請稍後再試。" });
